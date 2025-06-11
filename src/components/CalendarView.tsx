@@ -23,7 +23,7 @@ export const CalendarView = ({ events }: CalendarViewProps) => {
     return events.filter(event => {
       const eventDate = parseISO(event.date);
       return isSameDay(eventDate, date);
-    }).sort((a, b) => a.time.localeCompare(b.time));
+    }).sort((a, b) => a.startTime.localeCompare(b.startTime));
   };
 
   const handleDateClick = (date: Date) => {
@@ -99,7 +99,7 @@ export const CalendarView = ({ events }: CalendarViewProps) => {
                         text-xs p-1 rounded truncate
                         ${event.isOnline ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}
                       `}
-                      title={`${event.time} - ${event.title}`}
+                      title={`${event.startTime} - ${event.endTime}: ${event.title}`}
                     >
                       {event.title}
                     </div>
@@ -132,7 +132,9 @@ export const CalendarView = ({ events }: CalendarViewProps) => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{event.time}</span>
+                          <span className="text-sm font-medium">
+                            {event.startTime} - {event.endTime}
+                          </span>
                           <Badge variant={event.isOnline ? 'secondary' : 'default'}>
                             {event.isOnline ? 'Online' : 'In-person'}
                           </Badge>

@@ -11,7 +11,24 @@ export const useEvents = () => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        setEvents(JSON.parse(stored));
+        const parsedEvents = JSON.parse(stored);
+        // Migration: convert old events with 'time' to new format with 'startTime' and 'endTime'
+        const migratedEvents = parsedEvents.map((event: any) => {
+          if (event.time && !event.startTime) {
+            return {
+              ...event,
+              startTime: event.time,
+              endTime: event.time, // Default end time same as start time for old events
+            };
+          }
+          return event;
+        });
+        setEvents(migratedEvents);
+        
+        // Save migrated events back to storage
+        if (migratedEvents.some((event: any, index: number) => event !== parsedEvents[index])) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(migratedEvents));
+        }
       } catch (error) {
         console.error('Error parsing stored events:', error);
       }

@@ -4,7 +4,8 @@ export interface Event {
   title: string;
   description?: string;
   date: string; // ISO date string
-  time: string; // HH:MM format
+  startTime: string; // HH:MM format
+  endTime: string; // HH:MM format
   isOnline: boolean;
   meetingLink?: string;
   location?: string;

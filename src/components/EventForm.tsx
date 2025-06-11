@@ -18,7 +18,8 @@ export const EventForm = ({ onSave, onCancel }: EventFormProps) => {
     title: '',
     description: '',
     date: '',
-    time: '',
+    startTime: '',
+    endTime: '',
     isOnline: false,
     meetingLink: '',
     location: '',
@@ -38,8 +39,16 @@ export const EventForm = ({ onSave, onCancel }: EventFormProps) => {
       newErrors.date = 'Date is required';
     }
     
-    if (!formData.time) {
-      newErrors.time = 'Time is required';
+    if (!formData.startTime) {
+      newErrors.startTime = 'Start time is required';
+    }
+    
+    if (!formData.endTime) {
+      newErrors.endTime = 'End time is required';
+    }
+    
+    if (formData.startTime && formData.endTime && formData.startTime >= formData.endTime) {
+      newErrors.endTime = 'End time must be after start time';
     }
     
     setErrors(newErrors);
@@ -94,32 +103,46 @@ export const EventForm = ({ onSave, onCancel }: EventFormProps) => {
               />
             </div>
 
+            <div>
+              <Label htmlFor="date">Date *</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => handleInputChange('date', e.target.value)}
+                className={errors.date ? 'border-red-500' : ''}
+              />
+              {errors.date && (
+                <p className="text-sm text-red-500 mt-1">{errors.date}</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="date">Date *</Label>
+                <Label htmlFor="startTime">Start Time *</Label>
                 <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => handleInputChange('date', e.target.value)}
-                  className={errors.date ? 'border-red-500' : ''}
+                  id="startTime"
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => handleInputChange('startTime', e.target.value)}
+                  className={errors.startTime ? 'border-red-500' : ''}
                 />
-                {errors.date && (
-                  <p className="text-sm text-red-500 mt-1">{errors.date}</p>
+                {errors.startTime && (
+                  <p className="text-sm text-red-500 mt-1">{errors.startTime}</p>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="time">Time *</Label>
+                <Label htmlFor="endTime">End Time *</Label>
                 <Input
-                  id="time"
+                  id="endTime"
                   type="time"
-                  value={formData.time}
-                  onChange={(e) => handleInputChange('time', e.target.value)}
-                  className={errors.time ? 'border-red-500' : ''}
+                  value={formData.endTime}
+                  onChange={(e) => handleInputChange('endTime', e.target.value)}
+                  className={errors.endTime ? 'border-red-500' : ''}
                 />
-                {errors.time && (
-                  <p className="text-sm text-red-500 mt-1">{errors.time}</p>
+                {errors.endTime && (
+                  <p className="text-sm text-red-500 mt-1">{errors.endTime}</p>
                 )}
               </div>
             </div>

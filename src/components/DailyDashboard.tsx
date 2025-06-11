@@ -1,5 +1,5 @@
 
-import { format, isToday, isTomorrow, parseISO, isAfter, isBefore, addMinutes } from 'date-fns';
+import { format, isToday, isTomorrow, parseISO, isAfter, isBefore } from 'date-fns';
 import { Clock, MapPin, Video, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,22 +15,25 @@ export const DailyDashboard = ({ events }: DailyDashboardProps) => {
   const todayEvents = events.filter(event => {
     const eventDate = parseISO(event.date);
     return isToday(eventDate);
-  }).sort((a, b) => a.time.localeCompare(b.time));
+  }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const tomorrowEvents = events.filter(event => {
     const eventDate = parseISO(event.date);
     return isTomorrow(eventDate);
-  }).sort((a, b) => a.time.localeCompare(b.time));
+  }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const isEventOngoing = (event: Event) => {
     const eventDate = parseISO(event.date);
     if (!isToday(eventDate)) return false;
     
-    const [hours, minutes] = event.time.split(':').map(Number);
-    const eventStart = new Date(eventDate);
-    eventStart.setHours(hours, minutes, 0, 0);
+    const [startHours, startMinutes] = event.startTime.split(':').map(Number);
+    const [endHours, endMinutes] = event.endTime.split(':').map(Number);
     
-    const eventEnd = addMinutes(eventStart, 60); // Assume 1 hour duration
+    const eventStart = new Date(eventDate);
+    eventStart.setHours(startHours, startMinutes, 0, 0);
+    
+    const eventEnd = new Date(eventDate);
+    eventEnd.setHours(endHours, endMinutes, 0, 0);
     
     return isAfter(now, eventStart) && isBefore(now, eventEnd);
   };
@@ -45,7 +48,9 @@ export const DailyDashboard = ({ events }: DailyDashboardProps) => {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{event.time}</span>
+                <span className="text-sm font-medium">
+                  {event.startTime} - {event.endTime}
+                </span>
                 {ongoing && (
                   <Badge variant="secondary" className="bg-green-100 text-green-800">
                     Ongoing
