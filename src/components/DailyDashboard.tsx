@@ -1,6 +1,6 @@
 
 import { format, isToday, isTomorrow, parseISO, isAfter, isBefore } from 'date-fns';
-import { Clock, MapPin, Video, Calendar } from 'lucide-react';
+import { Clock, MapPin, Video, Calendar, Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Event } from '@/types/event';
@@ -38,11 +38,16 @@ export const DailyDashboard = ({ events }: DailyDashboardProps) => {
     return isAfter(now, eventStart) && isBefore(now, eventEnd);
   };
 
+  const isPublicEvent = (event: Event) => {
+    return event.id.startsWith('public-');
+  };
+
   const EventCard = ({ event }: { event: Event }) => {
     const ongoing = isEventOngoing(event);
+    const isPublic = isPublicEvent(event);
     
     return (
-      <Card className={`mb-3 ${ongoing ? 'border-green-500 bg-green-50' : ''}`}>
+      <Card className={`mb-3 ${ongoing ? 'border-green-500 bg-green-50' : ''} ${isPublic ? 'border-blue-200 bg-blue-50' : ''}`}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -54,6 +59,12 @@ export const DailyDashboard = ({ events }: DailyDashboardProps) => {
                 {ongoing && (
                   <Badge variant="secondary" className="bg-green-100 text-green-800">
                     Ongoing
+                  </Badge>
+                )}
+                {isPublic && (
+                  <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                    <Globe className="h-3 w-3 mr-1" />
+                    Public
                   </Badge>
                 )}
               </div>

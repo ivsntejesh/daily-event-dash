@@ -8,12 +8,14 @@ import { CalendarView } from '@/components/CalendarView';
 import { AuthPage } from '@/components/AuthPage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabaseEvents } from '@/hooks/useSupabaseEvents';
+import { usePublicEvents } from '@/hooks/usePublicEvents';
 import { ViewMode } from '@/types/event';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const { user, signOut, loading } = useAuth();
   const { events, addEvent } = useSupabaseEvents();
+  const { publicEvents } = usePublicEvents();
 
   if (loading) {
     return (
@@ -50,7 +52,7 @@ const Index = () => {
 
   const renderView = () => {
     // Convert Supabase events to the format expected by components
-    const formattedEvents = events.map(event => ({
+    const formattedUserEvents = events.map(event => ({
       id: event.id,
       title: event.title,
       description: event.description,
@@ -64,11 +66,35 @@ const Index = () => {
       createdAt: event.created_at,
     }));
 
+    // Convert public events to the same format
+    const formattedPublicEvents = publicEvents.map(event => ({
+      id: `public-${event.id}`,
+      title: `🌐 ${event.title}`,
+      description: event.description,
+      date: event.date,
+      startTime: event.start_time,
+      endTime: event.end_time,
+      isOnline: event.is_online,
+      meetingLink: event.meeting_link,
+      location: event.location,
+      notes: event.notes,
+      createdAt: event.created_at,
+    }));
+
+    // Combine and sort all events
+    const allEvents = [...formattedUserEvents, ...formattedPublicEvents]
+      .sort((a, b) => {
+        if (a.date === b.date) {
+          return a.startTime.localeCompare(b.startTime);
+        }
+        return a.date.localeCompare(b.date);
+      });
+
     switch (currentView) {
       case 'dashboard':
-        return <DailyDashboard events={formattedEvents} />;
+        return <DailyDashboard events={allEvents} />;
       case 'calendar':
-        return <CalendarView events={formattedEvents} />;
+        return <CalendarView events={allEvents} />;
       case 'create':
         return (
           <EventForm
@@ -77,7 +103,7 @@ const Index = () => {
           />
         );
       default:
-        return <DailyDashboard events={formattedEvents} />;
+        return <DailyDashboard events={allEvents} />;
     }
   };
 
