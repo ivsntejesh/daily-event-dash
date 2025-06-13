@@ -1,28 +1,74 @@
 
 import { useState } from 'react';
-import { Plus, Calendar, Home } from 'lucide-react';
+import { Plus, Calendar, Home, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DailyDashboard } from '@/components/DailyDashboard';
 import { EventForm } from '@/components/EventForm';
 import { CalendarView } from '@/components/CalendarView';
-import { useEvents } from '@/hooks/useEvents';
+import { AuthPage } from '@/components/AuthPage';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseEvents } from '@/hooks/useSupabaseEvents';
 import { ViewMode } from '@/types/event';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
-  const { events, addEvent } = useEvents();
+  const { user, signOut, loading } = useAuth();
+  const { events, addEvent } = useSupabaseEvents();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthPage />;
+  }
 
   const handleSaveEvent = (eventData: any) => {
-    addEvent(eventData);
+    // Convert the form data to match Supabase schema
+    const supabaseEventData = {
+      title: eventData.title,
+      description: eventData.description,
+      date: eventData.date,
+      start_time: eventData.startTime,
+      end_time: eventData.endTime,
+      is_online: eventData.isOnline,
+      meeting_link: eventData.meetingLink,
+      location: eventData.location,
+      notes: eventData.notes,
+    };
+    
+    addEvent(supabaseEventData);
     setCurrentView('dashboard');
   };
 
   const renderView = () => {
+    // Convert Supabase events to the format expected by components
+    const formattedEvents = events.map(event => ({
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      date: event.date,
+      startTime: event.start_time,
+      endTime: event.end_time,
+      isOnline: event.is_online,
+      meetingLink: event.meeting_link,
+      location: event.location,
+      notes: event.notes,
+      createdAt: event.created_at,
+    }));
+
     switch (currentView) {
       case 'dashboard':
-        return <DailyDashboard events={events} />;
+        return <DailyDashboard events={formattedEvents} />;
       case 'calendar':
-        return <CalendarView events={events} />;
+        return <CalendarView events={formattedEvents} />;
       case 'create':
         return (
           <EventForm
@@ -31,7 +77,7 @@ const Index = () => {
           />
         );
       default:
-        return <DailyDashboard events={events} />;
+        return <DailyDashboard events={formattedEvents} />;
     }
   };
 
@@ -43,6 +89,9 @@ const Index = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <h1 className="text-xl font-bold">EventHub</h1>
+              <span className="text-sm text-muted-foreground">
+                Welcome, {user.email}
+              </span>
             </div>
             
             <div className="flex items-center space-x-2">
@@ -69,6 +118,14 @@ const Index = () => {
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Event
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={signOut}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
               </Button>
             </div>
           </div>
