@@ -14,6 +14,7 @@ export const formatPrivateEvent = (event: PrivateEvent): FormattedEvent => ({
   notes: event.notes,
   createdAt: event.created_at,
   isPublic: false,
+  userId: event.user_id,
 });
 
 export const formatPublicEvent = (event: PublicEvent): FormattedEvent => ({
@@ -29,6 +30,7 @@ export const formatPublicEvent = (event: PublicEvent): FormattedEvent => ({
   notes: event.notes,
   createdAt: event.created_at,
   isPublic: true,
+  userId: event.user_id,
 });
 
 export const sortEventsByDateTime = (events: FormattedEvent[]): FormattedEvent[] => {

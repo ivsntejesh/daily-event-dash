@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormattedEvent } from '@/types/eventTypes';
 import { useSupabaseEvents } from '@/hooks/useSupabaseEvents';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { EventVisibilitySelector } from './EventVisibilitySelector';
 import { EventFormFields } from './EventFormFields';
 import { EventLocationFields } from './EventLocationFields';
@@ -31,6 +32,7 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
   const [isPublicEvent, setIsPublicEvent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { updateEvent } = useSupabaseEvents();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -121,6 +123,7 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
 
   const isEditing = !!editingEvent;
   const isPublicEventEdit = editingEvent?.isPublic;
+  const canEditPublicEvent = isPublicEventEdit && user && editingEvent?.userId === user.id;
 
   return (
     <div className="max-w-2xl mx-auto p-4">
@@ -137,10 +140,10 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
               />
             )}
 
-            {isPublicEventEdit && (
+            {isPublicEventEdit && !canEditPublicEvent && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-800">
-                  This is a public event. Public events cannot be edited - only deleted and recreated.
+                  This is a public event created by another user. You can only view it.
                 </p>
               </div>
             )}
@@ -159,7 +162,7 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
               onEndTimeChange={(value) => handleInputChange('endTime', value)}
               onNotesChange={(value) => handleInputChange('notes', value)}
               errors={errors}
-              disabled={isPublicEventEdit}
+              disabled={isPublicEventEdit && !canEditPublicEvent}
             />
 
             <EventLocationFields
@@ -169,17 +172,17 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
               onIsOnlineChange={(checked) => handleInputChange('isOnline', checked)}
               onMeetingLinkChange={(value) => handleInputChange('meetingLink', value)}
               onLocationChange={(value) => handleInputChange('location', value)}
-              disabled={isPublicEventEdit}
+              disabled={isPublicEventEdit && !canEditPublicEvent}
             />
 
             <div className="flex gap-3 pt-4">
-              {!isPublicEventEdit && (
+              {(!isPublicEventEdit || canEditPublicEvent) && (
                 <Button type="submit" className="flex-1">
                   {isEditing ? 'Update Event' : 'Save Event'}
                 </Button>
               )}
               <Button type="button" variant="outline" onClick={onCancel}>
-                {isPublicEventEdit ? 'Close' : 'Cancel'}
+                {(isPublicEventEdit && !canEditPublicEvent) ? 'Close' : 'Cancel'}
               </Button>
             </div>
           </form>

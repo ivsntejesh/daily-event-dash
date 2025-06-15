@@ -17,7 +17,9 @@ export interface PrivateEvent extends BaseEvent {
   user_id: string;
 }
 
-export interface PublicEvent extends BaseEvent {}
+export interface PublicEvent extends BaseEvent {
+  user_id?: string;
+}
 
 export interface FormattedEvent {
   id: string;
@@ -32,6 +34,7 @@ export interface FormattedEvent {
   notes?: string;
   createdAt: string;
   isPublic?: boolean;
+  userId?: string;
 }
 
 export type ViewMode = 'dashboard' | 'calendar' | 'create';

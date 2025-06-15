@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,13 +42,13 @@ export const usePublicEvents = () => {
     fetchPublicEvents();
   }, [user]);
 
-  const addPublicEvent = async (eventData: Omit<PublicEvent, 'id' | 'created_at'>) => {
+  const addPublicEvent = async (eventData: Omit<PublicEvent, 'id' | 'created_at' | 'user_id'>) => {
     if (!user) return;
 
     try {
       const { data, error } = await supabase
         .from('public_events')
-        .insert([eventData])
+        .insert([{ ...eventData, user_id: user.id }])
         .select()
         .single();
 
@@ -71,10 +72,76 @@ export const usePublicEvents = () => {
     }
   };
 
+  const updatePublicEvent = async (eventId: string, eventData: Partial<PublicEvent>) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('public_events')
+        .update(eventData)
+        .eq('id', eventId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating public event:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update public event",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setPublicEvents(prev => 
+        prev.map(event => event.id === eventId ? data : event)
+      );
+      toast({
+        title: "Success",
+        description: "Public event updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating public event:', error);
+    }
+  };
+
+  const deletePublicEvent = async (eventId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('public_events')
+        .delete()
+        .eq('id', eventId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error deleting public event:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete public event",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setPublicEvents(prev => prev.filter(event => event.id !== eventId));
+      toast({
+        title: "Success",
+        description: "Public event deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting public event:', error);
+    }
+  };
+
   return {
     publicEvents,
     loading,
     addPublicEvent,
+    updatePublicEvent,
+    deletePublicEvent,
     refetch: fetchPublicEvents,
   };
 };

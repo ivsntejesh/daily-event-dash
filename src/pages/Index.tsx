@@ -18,7 +18,7 @@ const Index = () => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [editingEvent, setEditingEvent] = useState<FormattedEvent | null>(null);
   const { user, signOut, loading: authLoading } = useAuth();
-  const { events, saveEvent } = useEvents();
+  const { events, saveEvent, updateEvent, deleteEvent } = useEvents();
 
   if (authLoading) {
     return <LoadingSpinner />;
@@ -49,8 +49,12 @@ const Index = () => {
     );
   }
 
-  const handleSaveEvent = (eventData: any, isPublic: boolean) => {
-    saveEvent(eventData, isPublic);
+  const handleSaveEvent = async (eventData: any, isPublic: boolean) => {
+    if (editingEvent) {
+      await updateEvent(editingEvent.id, eventData, editingEvent.isPublic || false);
+    } else {
+      saveEvent(eventData, isPublic);
+    }
     setCurrentView('dashboard');
     setEditingEvent(null);
   };
@@ -58,6 +62,13 @@ const Index = () => {
   const handleEditEvent = (event: FormattedEvent) => {
     setEditingEvent(event);
     setCurrentView('create');
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      await deleteEvent(eventId, event.isPublic || false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -69,7 +80,13 @@ const Index = () => {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <DailyDashboard events={events} onEditEvent={handleEditEvent} />;
+        return (
+          <DailyDashboard 
+            events={events} 
+            onEditEvent={handleEditEvent}
+            onDeleteEvent={handleDeleteEvent}
+          />
+        );
       case 'calendar':
         return <CalendarView events={events} />;
       case 'create':
@@ -84,7 +101,13 @@ const Index = () => {
           />
         );
       default:
-        return <DailyDashboard events={events} onEditEvent={handleEditEvent} />;
+        return (
+          <DailyDashboard 
+            events={events} 
+            onEditEvent={handleEditEvent}
+            onDeleteEvent={handleDeleteEvent}
+          />
+        );
     }
   };
 

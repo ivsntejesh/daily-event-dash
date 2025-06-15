@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FormattedEvent } from '@/types/eventTypes';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EventCardProps {
   event: FormattedEvent;
@@ -14,6 +15,7 @@ interface EventCardProps {
 }
 
 export const EventCard = ({ event, onEdit, onDelete, showActions = false }: EventCardProps) => {
+  const { user } = useAuth();
   const now = new Date();
   
   const isEventOngoing = () => {
@@ -34,6 +36,10 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false }: Even
 
   const ongoing = isEventOngoing();
   const isPublic = event.isPublic;
+  const canEdit = user && (
+    (!isPublic) || // Private events can be edited by owner
+    (isPublic && event.userId === user.id) // Public events can only be edited by creator
+  );
 
   return (
     <Card className={`mb-3 ${ongoing ? 'border-green-500 bg-green-50' : ''} ${isPublic ? 'border-blue-200 bg-blue-50' : ''}`}>
@@ -91,7 +97,7 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false }: Even
               <p className="text-xs text-muted-foreground">{event.notes}</p>
             )}
           </div>
-          {showActions && !isPublic && (
+          {showActions && canEdit && (
             <div className="flex gap-1 ml-2">
               <Button
                 variant="ghost"
