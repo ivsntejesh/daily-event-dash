@@ -30,7 +30,7 @@ export const formatPublicEvent = (event: PublicEvent): FormattedEvent => ({
   notes: event.notes,
   createdAt: event.created_at,
   isPublic: true,
-  userId: event.user_id,
+  userId: event.user_id, // This should now properly contain the user ID
 });
 
 export const sortEventsByDateTime = (events: FormattedEvent[]): FormattedEvent[] => {
