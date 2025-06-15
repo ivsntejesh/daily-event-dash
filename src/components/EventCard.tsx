@@ -36,10 +36,22 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false }: Even
 
   const ongoing = isEventOngoing();
   const isPublic = event.isPublic;
+  
+  // Check if the current user can edit this event
   const canEdit = user && (
-    (!isPublic) || // Private events can be edited by owner
+    (!isPublic) || // Private events can be edited by owner (handled by RLS)
     (isPublic && event.userId === user.id) // Public events can only be edited by creator
   );
+
+  console.log('EventCard debug:', {
+    eventId: event.id,
+    eventTitle: event.title,
+    isPublic,
+    eventUserId: event.userId,
+    currentUserId: user?.id,
+    canEdit,
+    showActions
+  });
 
   return (
     <Card className={`mb-3 ${ongoing ? 'border-green-500 bg-green-50' : ''} ${isPublic ? 'border-blue-200 bg-blue-50' : ''}`}>

@@ -19,7 +19,7 @@ export const formatPrivateEvent = (event: PrivateEvent): FormattedEvent => ({
 
 export const formatPublicEvent = (event: PublicEvent): FormattedEvent => ({
   id: `public-${event.id}`,
-  title: `🌐 ${event.title}`,
+  title: event.title,
   description: event.description,
   date: event.date,
   startTime: event.start_time,
