@@ -1,68 +1,47 @@
 
-import { useState, useEffect } from 'react';
-import { Event } from '@/types/event';
-
-const STORAGE_KEY = 'student-events';
+import { useSupabaseEvents } from './useSupabaseEvents';
+import { usePublicEvents } from './usePublicEvents';
+import { combineAndSortEvents } from '@/utils/eventUtils';
+import { FormattedEvent } from '@/types/eventTypes';
 
 export const useEvents = () => {
-  const [events, setEvents] = useState<Event[]>([]);
+  const { 
+    events: privateEvents, 
+    addEvent: addPrivateEvent, 
+    loading: privateLoading 
+  } = useSupabaseEvents();
+  
+  const { 
+    publicEvents, 
+    addPublicEvent, 
+    loading: publicLoading 
+  } = usePublicEvents();
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsedEvents = JSON.parse(stored);
-        // Migration: convert old events with 'time' to new format with 'startTime' and 'endTime'
-        const migratedEvents = parsedEvents.map((event: any) => {
-          if (event.time && !event.startTime) {
-            return {
-              ...event,
-              startTime: event.time,
-              endTime: event.time, // Default end time same as start time for old events
-            };
-          }
-          return event;
-        });
-        setEvents(migratedEvents);
-        
-        // Save migrated events back to storage
-        if (migratedEvents.some((event: any, index: number) => event !== parsedEvents[index])) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(migratedEvents));
-        }
-      } catch (error) {
-        console.error('Error parsing stored events:', error);
-      }
-    }
-  }, []);
-
-  const saveEvents = (newEvents: Event[]) => {
-    setEvents(newEvents);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newEvents));
-  };
-
-  const addEvent = (event: Omit<Event, 'id' | 'createdAt'>) => {
-    const newEvent: Event = {
-      ...event,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
+  const allEvents: FormattedEvent[] = combineAndSortEvents(privateEvents, publicEvents);
+  
+  const handleSaveEvent = (eventData: any, isPublic: boolean) => {
+    const supabaseEventData = {
+      title: eventData.title,
+      description: eventData.description,
+      date: eventData.date,
+      start_time: eventData.startTime,
+      end_time: eventData.endTime,
+      is_online: eventData.isOnline,
+      meeting_link: eventData.meetingLink,
+      location: eventData.location,
+      notes: eventData.notes,
     };
-    saveEvents([...events, newEvent]);
-  };
 
-  const deleteEvent = (id: string) => {
-    saveEvents(events.filter(event => event.id !== id));
-  };
-
-  const updateEvent = (id: string, updates: Partial<Event>) => {
-    saveEvents(events.map(event => 
-      event.id === id ? { ...event, ...updates } : event
-    ));
+    if (isPublic) {
+      addPublicEvent(supabaseEventData);
+    } else {
+      addPrivateEvent(supabaseEventData);
+    }
   };
 
   return {
-    events,
-    addEvent,
-    deleteEvent,
-    updateEvent,
+    events: allEvents,
+    loading: privateLoading || publicLoading,
+    saveEvent: handleSaveEvent,
   };
 };

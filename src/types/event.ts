@@ -1,3 +1,5 @@
+// Legacy file - keeping for backward compatibility
+// New code should use @/types/eventTypes instead
 
 export interface Event {
   id: string;

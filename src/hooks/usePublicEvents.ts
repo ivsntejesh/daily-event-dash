@@ -1,22 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-
-export interface PublicEvent {
-  id: string;
-  title: string;
-  description?: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  is_online: boolean;
-  meeting_link?: string;
-  location?: string;
-  notes?: string;
-  created_at: string;
-}
+import { PublicEvent } from '@/types/eventTypes';
 
 export const usePublicEvents = () => {
   const [publicEvents, setPublicEvents] = useState<PublicEvent[]>([]);

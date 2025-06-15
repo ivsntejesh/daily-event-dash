@@ -1,25 +1,11 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-
-export interface SupabaseEvent {
-  id: string;
-  title: string;
-  description?: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  is_online: boolean;
-  meeting_link?: string;
-  location?: string;
-  notes?: string;
-  created_at: string;
-}
+import { PrivateEvent } from '@/types/eventTypes';
 
 export const useSupabaseEvents = () => {
-  const [events, setEvents] = useState<SupabaseEvent[]>([]);
+  const [events, setEvents] = useState<PrivateEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -55,7 +41,7 @@ export const useSupabaseEvents = () => {
     fetchEvents();
   }, [user]);
 
-  const addEvent = async (eventData: Omit<SupabaseEvent, 'id' | 'created_at'>) => {
+  const addEvent = async (eventData: Omit<PrivateEvent, 'id' | 'created_at' | 'user_id'>) => {
     if (!user) return;
 
     try {
@@ -88,7 +74,7 @@ export const useSupabaseEvents = () => {
     }
   };
 
-  const updateEvent = async (id: string, updates: Partial<SupabaseEvent>) => {
+  const updateEvent = async (id: string, updates: Partial<PrivateEvent>) => {
     if (!user) return;
 
     try {

@@ -1,12 +1,11 @@
-
 import { format, isToday, isTomorrow, parseISO, isAfter, isBefore } from 'date-fns';
 import { Clock, MapPin, Video, Calendar, Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Event } from '@/types/event';
+import { FormattedEvent } from '@/types/eventTypes';
 
 interface DailyDashboardProps {
-  events: Event[];
+  events: FormattedEvent[];
 }
 
 export const DailyDashboard = ({ events }: DailyDashboardProps) => {
@@ -22,7 +21,7 @@ export const DailyDashboard = ({ events }: DailyDashboardProps) => {
     return isTomorrow(eventDate);
   }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  const isEventOngoing = (event: Event) => {
+  const isEventOngoing = (event: FormattedEvent) => {
     const eventDate = parseISO(event.date);
     if (!isToday(eventDate)) return false;
     
@@ -38,13 +37,9 @@ export const DailyDashboard = ({ events }: DailyDashboardProps) => {
     return isAfter(now, eventStart) && isBefore(now, eventEnd);
   };
 
-  const isPublicEvent = (event: Event) => {
-    return event.id.startsWith('public-');
-  };
-
-  const EventCard = ({ event }: { event: Event }) => {
+  const EventCard = ({ event }: { event: FormattedEvent }) => {
     const ongoing = isEventOngoing(event);
-    const isPublic = isPublicEvent(event);
+    const isPublic = event.isPublic;
     
     return (
       <Card className={`mb-3 ${ongoing ? 'border-green-500 bg-green-50' : ''} ${isPublic ? 'border-blue-200 bg-blue-50' : ''}`}>
