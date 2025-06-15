@@ -8,15 +8,15 @@ import { EventCard } from '@/components/EventCard';
 import { SearchAndFilter, EventFilters } from '@/components/SearchAndFilter';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useEventFiltering } from '@/hooks/useEventFiltering';
-import { useSupabaseEvents } from '@/hooks/useSupabaseEvents';
 import { useToast } from '@/hooks/use-toast';
 
 interface DailyDashboardProps {
   events: FormattedEvent[];
   onEditEvent?: (event: FormattedEvent) => void;
+  onDeleteEvent?: (eventId: string) => Promise<void>;
 }
 
-export const DailyDashboard = ({ events, onEditEvent }: DailyDashboardProps) => {
+export const DailyDashboard = ({ events, onEditEvent, onDeleteEvent }: DailyDashboardProps) => {
   const now = new Date();
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<EventFilters>({
@@ -30,7 +30,6 @@ export const DailyDashboard = ({ events, onEditEvent }: DailyDashboardProps) => 
     eventTitle: ''
   });
 
-  const { deleteEvent } = useSupabaseEvents();
   const { toast } = useToast();
 
   const filteredEvents = useEventFiltering(events, searchQuery, filters);
@@ -55,7 +54,9 @@ export const DailyDashboard = ({ events, onEditEvent }: DailyDashboardProps) => 
 
   const confirmDelete = async () => {
     try {
-      await deleteEvent(deleteConfirm.eventId);
+      if (onDeleteEvent) {
+        await onDeleteEvent(deleteConfirm.eventId);
+      }
       setDeleteConfirm({ open: false, eventId: '', eventTitle: '' });
     } catch (error) {
       toast({
