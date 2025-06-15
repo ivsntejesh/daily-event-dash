@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Event } from '@/types/event';
 
 interface EventFormProps {
-  onSave: (event: Omit<Event, 'id' | 'createdAt'>) => void;
+  onSave: (event: Omit<Event, 'id' | 'createdAt'>, isPublic: boolean) => void;
   onCancel: () => void;
 }
 
@@ -26,6 +27,7 @@ export const EventForm = ({ onSave, onCancel }: EventFormProps) => {
     notes: '',
   });
 
+  const [isPublicEvent, setIsPublicEvent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = () => {
@@ -59,7 +61,7 @@ export const EventForm = ({ onSave, onCancel }: EventFormProps) => {
     e.preventDefault();
     
     if (validateForm()) {
-      onSave(formData);
+      onSave(formData, isPublicEvent);
     }
   };
 
@@ -80,6 +82,28 @@ export const EventForm = ({ onSave, onCancel }: EventFormProps) => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label className="text-base font-medium">Event Visibility</Label>
+              <RadioGroup
+                value={isPublicEvent ? 'public' : 'private'}
+                onValueChange={(value) => setIsPublicEvent(value === 'public')}
+                className="mt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="private" id="private" />
+                  <Label htmlFor="private" className="cursor-pointer">
+                    Private Event - Only visible to you
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="public" id="public" />
+                  <Label htmlFor="public" className="cursor-pointer">
+                    Public Event - Visible to all users
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             <div>
               <Label htmlFor="title">Title *</Label>
               <Input

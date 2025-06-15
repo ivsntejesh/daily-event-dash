@@ -15,7 +15,7 @@ const Index = () => {
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const { user, signOut, loading } = useAuth();
   const { events, addEvent } = useSupabaseEvents();
-  const { publicEvents } = usePublicEvents();
+  const { publicEvents, addPublicEvent } = usePublicEvents();
 
   if (loading) {
     return (
@@ -32,21 +32,39 @@ const Index = () => {
     return <AuthPage />;
   }
 
-  const handleSaveEvent = (eventData: any) => {
-    // Convert the form data to match Supabase schema
-    const supabaseEventData = {
-      title: eventData.title,
-      description: eventData.description,
-      date: eventData.date,
-      start_time: eventData.startTime,
-      end_time: eventData.endTime,
-      is_online: eventData.isOnline,
-      meeting_link: eventData.meetingLink,
-      location: eventData.location,
-      notes: eventData.notes,
-    };
+  const handleSaveEvent = (eventData: any, isPublic: boolean) => {
+    if (isPublic) {
+      // Create public event
+      const publicEventData = {
+        title: eventData.title,
+        description: eventData.description,
+        date: eventData.date,
+        start_time: eventData.startTime,
+        end_time: eventData.endTime,
+        is_online: eventData.isOnline,
+        meeting_link: eventData.meetingLink,
+        location: eventData.location,
+        notes: eventData.notes,
+      };
+      
+      addPublicEvent(publicEventData);
+    } else {
+      // Create private event
+      const supabaseEventData = {
+        title: eventData.title,
+        description: eventData.description,
+        date: eventData.date,
+        start_time: eventData.startTime,
+        end_time: eventData.endTime,
+        is_online: eventData.isOnline,
+        meeting_link: eventData.meetingLink,
+        location: eventData.location,
+        notes: eventData.notes,
+      };
+      
+      addEvent(supabaseEventData);
+    }
     
-    addEvent(supabaseEventData);
     setCurrentView('dashboard');
   };
 

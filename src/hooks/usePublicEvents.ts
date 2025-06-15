@@ -55,9 +55,40 @@ export const usePublicEvents = () => {
     fetchPublicEvents();
   }, [user]);
 
+  const addPublicEvent = async (eventData: Omit<PublicEvent, 'id' | 'created_at'>) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('public_events')
+        .insert([eventData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding public event:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create public event",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setPublicEvents(prev => [...prev, data]);
+      toast({
+        title: "Success",
+        description: "Public event created successfully",
+      });
+    } catch (error) {
+      console.error('Error adding public event:', error);
+    }
+  };
+
   return {
     publicEvents,
     loading,
+    addPublicEvent,
     refetch: fetchPublicEvents,
   };
 };
