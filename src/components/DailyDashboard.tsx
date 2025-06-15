@@ -1,109 +1,97 @@
 
-import { format, isToday, isTomorrow, parseISO, isAfter, isBefore } from 'date-fns';
-import { Clock, MapPin, Video, Calendar, Globe, ExternalLink } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { format, isToday, isTomorrow, parseISO } from 'date-fns';
+import { Calendar } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { FormattedEvent } from '@/types/eventTypes';
+import { EventCard } from '@/components/EventCard';
+import { SearchAndFilter, EventFilters } from '@/components/SearchAndFilter';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { useEventFiltering } from '@/hooks/useEventFiltering';
+import { useSupabaseEvents } from '@/hooks/useSupabaseEvents';
+import { useToast } from '@/hooks/use-toast';
 
 interface DailyDashboardProps {
   events: FormattedEvent[];
+  onEditEvent?: (event: FormattedEvent) => void;
 }
 
-export const DailyDashboard = ({ events }: DailyDashboardProps) => {
+export const DailyDashboard = ({ events, onEditEvent }: DailyDashboardProps) => {
   const now = new Date();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<EventFilters>({
+    type: 'all',
+    visibility: 'all',
+    timeframe: 'all'
+  });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; eventId: string; eventTitle: string }>({
+    open: false,
+    eventId: '',
+    eventTitle: ''
+  });
+
+  const { deleteEvent } = useSupabaseEvents();
+  const { toast } = useToast();
+
+  const filteredEvents = useEventFiltering(events, searchQuery, filters);
   
-  const todayEvents = events.filter(event => {
+  const todayEvents = filteredEvents.filter(event => {
     const eventDate = parseISO(event.date);
     return isToday(eventDate);
   }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  const tomorrowEvents = events.filter(event => {
+  const tomorrowEvents = filteredEvents.filter(event => {
     const eventDate = parseISO(event.date);
     return isTomorrow(eventDate);
   }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  const isEventOngoing = (event: FormattedEvent) => {
-    const eventDate = parseISO(event.date);
-    if (!isToday(eventDate)) return false;
-    
-    const [startHours, startMinutes] = event.startTime.split(':').map(Number);
-    const [endHours, endMinutes] = event.endTime.split(':').map(Number);
-    
-    const eventStart = new Date(eventDate);
-    eventStart.setHours(startHours, startMinutes, 0, 0);
-    
-    const eventEnd = new Date(eventDate);
-    eventEnd.setHours(endHours, endMinutes, 0, 0);
-    
-    return isAfter(now, eventStart) && isBefore(now, eventEnd);
+  const handleDeleteEvent = (eventId: string, eventTitle: string) => {
+    setDeleteConfirm({
+      open: true,
+      eventId,
+      eventTitle
+    });
   };
 
-  const EventCard = ({ event }: { event: FormattedEvent }) => {
-    const ongoing = isEventOngoing(event);
-    const isPublic = event.isPublic;
-    
-    return (
-      <Card className={`mb-3 ${ongoing ? 'border-green-500 bg-green-50' : ''} ${isPublic ? 'border-blue-200 bg-blue-50' : ''}`}>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">
-                  {event.startTime} - {event.endTime}
-                </span>
-                {ongoing && (
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">
-                    Ongoing
-                  </Badge>
-                )}
-                {isPublic && (
-                  <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
-                    <Globe className="h-3 w-3 mr-1" />
-                    Public
-                  </Badge>
-                )}
-              </div>
-              <h3 className="font-semibold mb-1">{event.title}</h3>
-              {event.description && (
-                <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
-              )}
-              <div className="flex items-center gap-2 mb-2">
-                {event.isOnline ? (
-                  <div className="flex items-center gap-1 text-blue-600">
-                    <Video className="h-4 w-4" />
-                    <span className="text-xs">Online</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-green-600">
-                    <MapPin className="h-4 w-4" />
-                    <span className="text-xs">
-                      {event.location || 'In-person'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              {event.isOnline && event.meetingLink && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mb-2"
-                  onClick={() => window.open(event.meetingLink, '_blank')}
-                >
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Join Meeting
-                </Button>
-              )}
-              {event.notes && (
-                <p className="text-xs text-muted-foreground">{event.notes}</p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const confirmDelete = async () => {
+    try {
+      await deleteEvent(deleteConfirm.eventId);
+      setDeleteConfirm({ open: false, eventId: '', eventTitle: '' });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete event. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
+
+  const EventSection = ({ title, events, icon }: { title: string; events: FormattedEvent[]; icon: React.ReactNode }) => (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <span className="text-sm text-muted-foreground">({events.length})</span>
+      </div>
+      {events.length > 0 ? (
+        events.map(event => (
+          <EventCard 
+            key={event.id} 
+            event={event} 
+            onEdit={onEditEvent}
+            onDelete={(eventId) => handleDeleteEvent(eventId, event.title)}
+            showActions={true}
+          />
+        ))
+      ) : (
+        <Card>
+          <CardContent className="p-6 text-center text-muted-foreground">
+            No events found matching your criteria
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6">
@@ -114,41 +102,33 @@ export const DailyDashboard = ({ events }: DailyDashboardProps) => {
         </p>
       </div>
 
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Calendar className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">Today</h2>
-        </div>
-        {todayEvents.length > 0 ? (
-          todayEvents.map(event => (
-            <EventCard key={event.id} event={event} />
-          ))
-        ) : (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              No events scheduled for today
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      <SearchAndFilter
+        onSearch={setSearchQuery}
+        onFilterChange={setFilters}
+        filters={filters}
+      />
 
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Calendar className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">Tomorrow</h2>
-        </div>
-        {tomorrowEvents.length > 0 ? (
-          tomorrowEvents.map(event => (
-            <EventCard key={event.id} event={event} />
-          ))
-        ) : (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              No events scheduled for tomorrow
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      <EventSection
+        title="Today"
+        events={todayEvents}
+        icon={<Calendar className="h-5 w-5" />}
+      />
+
+      <EventSection
+        title="Tomorrow"
+        events={tomorrowEvents}
+        icon={<Calendar className="h-5 w-5" />}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        onConfirm={confirmDelete}
+        title="Delete Event"
+        description={`Are you sure you want to delete "${deleteConfirm.eventTitle}"? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="destructive"
+      />
     </div>
   );
 };

@@ -10,12 +10,13 @@ import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEvents } from '@/hooks/useEvents';
-import { ViewMode } from '@/types/eventTypes';
+import { ViewMode, FormattedEvent } from '@/types/eventTypes';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [editingEvent, setEditingEvent] = useState<FormattedEvent | null>(null);
   const { user, signOut, loading: authLoading } = useAuth();
   const { events, saveEvent } = useEvents();
 
@@ -51,6 +52,12 @@ const Index = () => {
   const handleSaveEvent = (eventData: any, isPublic: boolean) => {
     saveEvent(eventData, isPublic);
     setCurrentView('dashboard');
+    setEditingEvent(null);
+  };
+
+  const handleEditEvent = (event: FormattedEvent) => {
+    setEditingEvent(event);
+    setCurrentView('create');
   };
 
   const handleSignOut = async () => {
@@ -62,18 +69,22 @@ const Index = () => {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <DailyDashboard events={events} />;
+        return <DailyDashboard events={events} onEditEvent={handleEditEvent} />;
       case 'calendar':
         return <CalendarView events={events} />;
       case 'create':
         return (
           <EventForm
             onSave={handleSaveEvent}
-            onCancel={() => setCurrentView('dashboard')}
+            onCancel={() => {
+              setCurrentView('dashboard');
+              setEditingEvent(null);
+            }}
+            editingEvent={editingEvent}
           />
         );
       default:
-        return <DailyDashboard events={events} />;
+        return <DailyDashboard events={events} onEditEvent={handleEditEvent} />;
     }
   };
 
@@ -90,7 +101,10 @@ const Index = () => {
         {renderView()}
       </main>
 
-      <FloatingActionButton onClick={() => setCurrentView('create')} />
+      <FloatingActionButton onClick={() => {
+        setEditingEvent(null);
+        setCurrentView('create');
+      }} />
     </div>
   );
 };
