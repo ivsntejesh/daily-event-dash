@@ -35,6 +35,16 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
   const { user } = useAuth();
   const { toast } = useToast();
 
+  console.log('EventForm render state:', {
+    isEditing: !!editingEvent,
+    isPublicEvent,
+    editingEvent: editingEvent ? {
+      id: editingEvent.id,
+      title: editingEvent.title,
+      isPublic: editingEvent.isPublic
+    } : null
+  });
+
   useEffect(() => {
     if (editingEvent) {
       setFormData({
@@ -49,6 +59,20 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
         notes: editingEvent.notes || '',
       });
       setIsPublicEvent(editingEvent.isPublic || false);
+    } else {
+      // Reset form for new events
+      setFormData({
+        title: '',
+        description: '',
+        date: '',
+        startTime: '',
+        endTime: '',
+        isOnline: false,
+        meetingLink: '',
+        location: '',
+        notes: '',
+      });
+      setIsPublicEvent(false);
     }
   }, [editingEvent]);
 
@@ -134,10 +158,12 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isEditing && (
-              <EventVisibilitySelector
-                isPublicEvent={isPublicEvent}
-                onVisibilityChange={setIsPublicEvent}
-              />
+              <div className="mb-6">
+                <EventVisibilitySelector
+                  isPublicEvent={isPublicEvent}
+                  onVisibilityChange={setIsPublicEvent}
+                />
+              </div>
             )}
 
             {isPublicEventEdit && !canEditPublicEvent && (
