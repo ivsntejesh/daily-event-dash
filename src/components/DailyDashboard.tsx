@@ -1,7 +1,9 @@
+
 import { format, isToday, isTomorrow, parseISO, isAfter, isBefore } from 'date-fns';
-import { Clock, MapPin, Video, Calendar, Globe } from 'lucide-react';
+import { Clock, MapPin, Video, Calendar, Globe, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { FormattedEvent } from '@/types/eventTypes';
 
 interface DailyDashboardProps {
@@ -67,7 +69,7 @@ export const DailyDashboard = ({ events }: DailyDashboardProps) => {
               {event.description && (
                 <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
               )}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-2">
                 {event.isOnline ? (
                   <div className="flex items-center gap-1 text-blue-600">
                     <Video className="h-4 w-4" />
@@ -82,6 +84,20 @@ export const DailyDashboard = ({ events }: DailyDashboardProps) => {
                   </div>
                 )}
               </div>
+              {event.isOnline && event.meetingLink && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mb-2"
+                  onClick={() => window.open(event.meetingLink, '_blank')}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Join Meeting
+                </Button>
+              )}
+              {event.notes && (
+                <p className="text-xs text-muted-foreground">{event.notes}</p>
+              )}
             </div>
           </div>
         </CardContent>

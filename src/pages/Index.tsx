@@ -41,11 +41,21 @@ const Index = () => {
 
   // Show auth page when requested
   if (!user && showAuth) {
-    return <AuthPage />;
+    return (
+      <AuthPage 
+        onBack={() => setShowAuth(false)}
+      />
+    );
   }
 
   const handleSaveEvent = (eventData: any, isPublic: boolean) => {
     saveEvent(eventData, isPublic);
+    setCurrentView('dashboard');
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setShowAuth(false);
     setCurrentView('dashboard');
   };
 
@@ -73,7 +83,7 @@ const Index = () => {
         currentView={currentView}
         userEmail={user.email || ''}
         onViewChange={setCurrentView}
-        onSignOut={signOut}
+        onSignOut={handleSignOut}
       />
 
       <main className="pb-16">

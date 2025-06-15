@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { format, isToday, isTomorrow, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-import { Clock, MapPin, Video, Calendar, Globe, LogIn, UserPlus } from 'lucide-react';
+import { Clock, MapPin, Video, Calendar, Globe, LogIn, UserPlus, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,12 +47,17 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
     return a.date.localeCompare(b.date);
   });
 
-  const EventCard = ({ event }: { event: any }) => (
+  const EventCard = ({ event, showDate = false }: { event: any; showDate?: boolean }) => (
     <Card className="mb-3 border-blue-200 bg-blue-50">
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
+              {showDate && (
+                <span className="text-sm font-medium text-blue-700">
+                  {format(parseISO(event.date), 'MMM d')} •
+                </span>
+              )}
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">
                 {event.startTime} - {event.endTime}
@@ -66,7 +71,7 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
             {event.description && (
               <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-2">
               {event.isOnline ? (
                 <div className="flex items-center gap-1 text-blue-600">
                   <Video className="h-4 w-4" />
@@ -81,8 +86,19 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
                 </div>
               )}
             </div>
+            {event.isOnline && event.meetingLink && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mb-2"
+                onClick={() => window.open(event.meetingLink, '_blank')}
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Join Meeting
+              </Button>
+            )}
             {event.notes && (
-              <p className="text-xs text-muted-foreground mt-2">{event.notes}</p>
+              <p className="text-xs text-muted-foreground">{event.notes}</p>
             )}
           </div>
         </div>
@@ -194,7 +210,7 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
             </div>
             {monthlyEvents.length > 0 ? (
               monthlyEvents.map(event => (
-                <EventCard key={event.id} event={event} />
+                <EventCard key={event.id} event={event} showDate={true} />
               ))
             ) : (
               <Card>

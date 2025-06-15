@@ -4,10 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-export const AuthPage = () => {
+interface AuthPageProps {
+  onBack?: () => void;
+}
+
+export const AuthPage = ({ onBack }: AuthPageProps) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,6 +56,17 @@ export const AuthPage = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
+          {onBack && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onBack}
+              className="self-start -ml-2 mb-2"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          )}
           <CardTitle className="text-center">
             {isLogin ? 'Sign In' : 'Sign Up'}
           </CardTitle>
