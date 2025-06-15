@@ -4,6 +4,7 @@ import { DailyDashboard } from '@/components/DailyDashboard';
 import { EventForm } from '@/components/EventForm';
 import { CalendarView } from '@/components/CalendarView';
 import { AuthPage } from '@/components/AuthPage';
+import { PublicEventsView } from '@/components/PublicEventsView';
 import { Navigation } from '@/components/Navigation';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -13,6 +14,8 @@ import { ViewMode } from '@/types/eventTypes';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const { user, signOut, loading: authLoading } = useAuth();
   const { events, saveEvent } = useEvents();
 
@@ -20,7 +23,24 @@ const Index = () => {
     return <LoadingSpinner />;
   }
 
-  if (!user) {
+  // Show public events for non-authenticated users
+  if (!user && !showAuth) {
+    return (
+      <PublicEventsView 
+        onSignIn={() => {
+          setAuthMode('signin');
+          setShowAuth(true);
+        }}
+        onSignUp={() => {
+          setAuthMode('signup');
+          setShowAuth(true);
+        }}
+      />
+    );
+  }
+
+  // Show auth page when requested
+  if (!user && showAuth) {
     return <AuthPage />;
   }
 
