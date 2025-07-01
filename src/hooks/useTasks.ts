@@ -30,8 +30,8 @@ export const useTasks = () => {
       title: taskData.title,
       description: taskData.description,
       date: taskData.date,
-      start_time: taskData.startTime,
-      end_time: taskData.endTime,
+      start_time: taskData.startTime || null, // Convert empty string to null
+      end_time: taskData.endTime || null, // Convert empty string to null
       is_completed: taskData.isCompleted || false,
       priority: taskData.priority || 'medium',
       notes: taskData.notes,
@@ -49,8 +49,8 @@ export const useTasks = () => {
       title: taskData.title,
       description: taskData.description,
       date: taskData.date,
-      start_time: taskData.startTime,
-      end_time: taskData.endTime,
+      start_time: taskData.startTime || null, // Convert empty string to null
+      end_time: taskData.endTime || null, // Convert empty string to null
       is_completed: taskData.isCompleted || false,
       priority: taskData.priority || 'medium',
       notes: taskData.notes,
