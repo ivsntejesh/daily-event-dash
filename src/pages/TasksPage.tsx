@@ -60,6 +60,10 @@ export const TasksPage = () => {
         onEditTask={handleEditTask}
         onDeleteTask={handleDeleteTask}
         onToggleComplete={handleToggleComplete}
+        onNewTask={() => {
+          setEditingTask(null);
+          setShowForm(true);
+        }}
       />
       <FloatingActionButton onClick={() => {
         setEditingTask(null);

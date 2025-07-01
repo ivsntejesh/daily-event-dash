@@ -1,9 +1,9 @@
-
 import { useState } from 'react';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
-import { CheckSquare, Calendar, Filter } from 'lucide-react';
+import { CheckSquare, Calendar, Filter, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormattedTask } from '@/types/taskTypes';
 import { TaskCard } from '@/components/TaskCard';
@@ -15,9 +15,10 @@ interface TaskDashboardProps {
   onEditTask?: (task: FormattedTask) => void;
   onDeleteTask?: (taskId: string) => Promise<void>;
   onToggleComplete?: (taskId: string, isCompleted: boolean) => Promise<void>;
+  onNewTask?: () => void;
 }
 
-export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplete }: TaskDashboardProps) => {
+export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplete, onNewTask }: TaskDashboardProps) => {
   const now = new Date();
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -122,10 +123,20 @@ export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplet
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-6">
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold mb-2">Task Dashboard</h1>
-        <p className="text-muted-foreground">
-          {format(now, 'EEEE, MMMM d, yyyy')}
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">Task Dashboard</h1>
+            <p className="text-muted-foreground">
+              {format(now, 'EEEE, MMMM d, yyyy')}
+            </p>
+          </div>
+          {onNewTask && (
+            <Button onClick={onNewTask} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              New Task
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Search and Filters */}
