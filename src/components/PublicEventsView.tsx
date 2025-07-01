@@ -1,12 +1,14 @@
 
 import { useState } from 'react';
 import { format, isToday, isTomorrow, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-import { Clock, MapPin, Video, Calendar, Globe, LogIn, UserPlus, ExternalLink } from 'lucide-react';
+import { Clock, MapPin, Video, Calendar, Globe, LogIn, UserPlus, ExternalLink, CheckSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePublicEventsAnonymous } from '@/hooks/usePublicEventsAnonymous';
+import { usePublicTasksAnonymous } from '@/hooks/usePublicTasksAnonymous';
 import { formatPublicEvent } from '@/utils/eventUtils';
+import { formatPublicTask } from '@/utils/taskUtils';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface PublicEventsViewProps {
@@ -16,33 +18,71 @@ interface PublicEventsViewProps {
 
 export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) => {
   const [viewMode, setViewMode] = useState<'today' | 'monthly'>('today');
-  const { publicEvents, loading } = usePublicEventsAnonymous();
+  const { publicEvents, loading: eventsLoading } = usePublicEventsAnonymous();
+  const { publicTasks, loading: tasksLoading } = usePublicTasksAnonymous();
   const now = new Date();
 
-  if (loading) {
-    return <LoadingSpinner message="Loading public events..." />;
+  if (eventsLoading || tasksLoading) {
+    return <LoadingSpinner message="Loading public content..." />;
   }
 
   const formattedEvents = publicEvents.map(formatPublicEvent);
+  const formattedTasks = publicTasks.map(formatPublicTask);
 
+  // Combine events and tasks for today
   const todayEvents = formattedEvents.filter(event => {
     const eventDate = parseISO(event.date);
     return isToday(eventDate);
   }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
+  const todayTasks = formattedTasks.filter(task => {
+    const taskDate = parseISO(task.date);
+    return isToday(taskDate);
+  }).sort((a, b) => {
+    if (a.startTime && b.startTime) {
+      return a.startTime.localeCompare(b.startTime);
+    }
+    return 0;
+  });
+
+  // Combine events and tasks for tomorrow
   const tomorrowEvents = formattedEvents.filter(event => {
     const eventDate = parseISO(event.date);
     return isTomorrow(eventDate);
   }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
+  const tomorrowTasks = formattedTasks.filter(task => {
+    const taskDate = parseISO(task.date);
+    return isTomorrow(taskDate);
+  }).sort((a, b) => {
+    if (a.startTime && b.startTime) {
+      return a.startTime.localeCompare(b.startTime);
+    }
+    return 0;
+  });
+
+  // Monthly view
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
+  
   const monthlyEvents = formattedEvents.filter(event => {
     const eventDate = parseISO(event.date);
     return isWithinInterval(eventDate, { start: monthStart, end: monthEnd });
   }).sort((a, b) => {
     if (a.date === b.date) {
       return a.startTime.localeCompare(b.startTime);
+    }
+    return a.date.localeCompare(b.date);
+  });
+
+  const monthlyTasks = formattedTasks.filter(task => {
+    const taskDate = parseISO(task.date);
+    return isWithinInterval(taskDate, { start: monthStart, end: monthEnd });
+  }).sort((a, b) => {
+    if (a.date === b.date) {
+      if (a.startTime && b.startTime) {
+        return a.startTime.localeCompare(b.startTime);
+      }
     }
     return a.date.localeCompare(b.date);
   });
@@ -64,7 +104,7 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
               </span>
               <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
                 <Globe className="h-3 w-3 mr-1" />
-                Public
+                Public Event
               </Badge>
             </div>
             <h3 className="font-semibold mb-1">{event.title}</h3>
@@ -106,6 +146,90 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
     </Card>
   );
 
+  const TaskCard = ({ task, showDate = false }: { task: any; showDate?: boolean }) => (
+    <Card className="mb-3 border-green-200 bg-green-50">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              {showDate && (
+                <span className="text-sm font-medium text-green-700">
+                  {format(parseISO(task.date), 'MMM d')} •
+                </span>
+              )}
+              {task.startTime && task.endTime && (
+                <>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    {task.startTime} - {task.endTime}
+                  </span>
+                </>
+              )}
+              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                <Globe className="h-3 w-3 mr-1" />
+                Public Task
+              </Badge>
+              {task.priority && (
+                <Badge variant="outline" className="text-xs">
+                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                </Badge>
+              )}
+            </div>
+            <h3 className="font-semibold mb-1">{task.title}</h3>
+            {task.description && (
+              <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
+            )}
+            {task.notes && (
+              <p className="text-xs text-muted-foreground">{task.notes}</p>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const ContentSection = ({ title, events, tasks, icon }: { 
+    title: string; 
+    events: any[]; 
+    tasks: any[];
+    icon: React.ReactNode;
+  }) => (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <span className="text-sm text-muted-foreground">
+          ({events.length + tasks.length} items)
+        </span>
+      </div>
+      
+      {/* Render all items sorted by time */}
+      {[...events, ...tasks]
+        .sort((a, b) => {
+          if (a.startTime && b.startTime) {
+            return a.startTime.localeCompare(b.startTime);
+          }
+          return 0;
+        })
+        .map((item, index) => {
+          const isEvent = 'isOnline' in item;
+          return isEvent ? (
+            <EventCard key={`event-${item.id}-${index}`} event={item} showDate={title.includes('Monthly')} />
+          ) : (
+            <TaskCard key={`task-${item.id}-${index}`} task={item} showDate={title.includes('Monthly')} />
+          );
+        })}
+      
+      {events.length === 0 && tasks.length === 0 && (
+        <Card>
+          <CardContent className="p-6 text-center text-muted-foreground">
+            No public content scheduled for {title.toLowerCase()}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header with Login/Signup buttons */}
@@ -113,9 +237,9 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-bold">EventHub</h1>
+              <h1 className="text-xl font-bold">TaskHub</h1>
               <span className="text-sm text-muted-foreground">
-                Discover Public Events
+                Discover Public Events & Tasks
               </span>
             </div>
             <div className="flex items-center space-x-2">
@@ -134,7 +258,7 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
 
       <main className="max-w-2xl mx-auto p-4 space-y-6">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold mb-2">Public Events</h1>
+          <h1 className="text-2xl font-bold mb-2">Public Events & Tasks</h1>
           <p className="text-muted-foreground">
             {format(now, 'EEEE, MMMM d, yyyy')}
           </p>
@@ -149,7 +273,7 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
               onClick={() => setViewMode('today')}
               className="rounded-md"
             >
-              Today's Events
+              Today's Schedule
             </Button>
             <Button
               variant={viewMode === 'monthly' ? 'default' : 'ghost'}
@@ -157,78 +281,43 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
               onClick={() => setViewMode('monthly')}
               className="rounded-md"
             >
-              Monthly Events
+              Monthly View
             </Button>
           </div>
         </div>
 
         {viewMode === 'today' ? (
           <>
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Calendar className="h-5 w-5" />
-                <h2 className="text-lg font-semibold">Today</h2>
-              </div>
-              {todayEvents.length > 0 ? (
-                todayEvents.map(event => (
-                  <EventCard key={event.id} event={event} />
-                ))
-              ) : (
-                <Card>
-                  <CardContent className="p-6 text-center text-muted-foreground">
-                    No public events scheduled for today
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            <ContentSection
+              title="Today"
+              events={todayEvents}
+              tasks={todayTasks}
+              icon={<Calendar className="h-5 w-5" />}
+            />
 
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Calendar className="h-5 w-5" />
-                <h2 className="text-lg font-semibold">Tomorrow</h2>
-              </div>
-              {tomorrowEvents.length > 0 ? (
-                tomorrowEvents.map(event => (
-                  <EventCard key={event.id} event={event} />
-                ))
-              ) : (
-                <Card>
-                  <CardContent className="p-6 text-center text-muted-foreground">
-                    No public events scheduled for tomorrow
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            <ContentSection
+              title="Tomorrow"
+              events={tomorrowEvents}
+              tasks={tomorrowTasks}
+              icon={<Calendar className="h-5 w-5" />}
+            />
           </>
         ) : (
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar className="h-5 w-5" />
-              <h2 className="text-lg font-semibold">
-                {format(now, 'MMMM yyyy')} Events
-              </h2>
-            </div>
-            {monthlyEvents.length > 0 ? (
-              monthlyEvents.map(event => (
-                <EventCard key={event.id} event={event} showDate={true} />
-              ))
-            ) : (
-              <Card>
-                <CardContent className="p-6 text-center text-muted-foreground">
-                  No public events scheduled for this month
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          <ContentSection
+            title={`${format(now, 'MMMM yyyy')} Schedule`}
+            events={monthlyEvents}
+            tasks={monthlyTasks}
+            icon={<Calendar className="h-5 w-5" />}
+          />
         )}
 
         {/* Call to Action */}
         <div className="text-center py-8">
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-2">Want to create your own events?</h3>
+              <h3 className="text-lg font-semibold mb-2">Want to create your own events and tasks?</h3>
               <p className="text-muted-foreground mb-4">
-                Sign up to create and manage your personal and public events
+                Sign up to create and manage your personal and public events & tasks
               </p>
               <div className="flex gap-2 justify-center">
                 <Button onClick={onSignUp}>
