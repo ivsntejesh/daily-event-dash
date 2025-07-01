@@ -1,5 +1,6 @@
 
-import { PrivateTask, PublicTask, FormattedTask } from '@/types/taskTypes';
+import { format, parseISO } from 'date-fns';
+import { FormattedTask, PrivateTask, PublicTask } from '@/types/taskTypes';
 
 export const formatPrivateTask = (task: PrivateTask): FormattedTask => ({
   id: task.id,
@@ -31,43 +32,53 @@ export const formatPublicTask = (task: PublicTask): FormattedTask => ({
   userId: task.user_id,
 });
 
-export const sortTasksByDateTime = (tasks: FormattedTask[]): FormattedTask[] => {
-  return tasks.sort((a, b) => {
-    // Sort by date first
-    if (a.date === b.date) {
-      // If times exist, sort by start time
-      if (a.startTime && b.startTime) {
-        return a.startTime.localeCompare(b.startTime);
-      }
-      // Tasks without time come after tasks with time
-      if (a.startTime && !b.startTime) return -1;
-      if (!a.startTime && b.startTime) return 1;
-      // If neither has time, sort by creation date
-      return a.createdAt.localeCompare(b.createdAt);
-    }
-    return a.date.localeCompare(b.date);
-  });
-};
-
-export const combineAndSortTasks = (
-  privateTasks: PrivateTask[],
-  publicTasks: PublicTask[]
-): FormattedTask[] => {
+export const combineAndSortTasks = (privateTasks: PrivateTask[], publicTasks: PublicTask[]): FormattedTask[] => {
   const formattedPrivateTasks = privateTasks.map(formatPrivateTask);
   const formattedPublicTasks = publicTasks.map(formatPublicTask);
   
-  return sortTasksByDateTime([...formattedPrivateTasks, ...formattedPublicTasks]);
+  const allTasks = [...formattedPrivateTasks, ...formattedPublicTasks];
+  
+  return allTasks.sort((a, b) => {
+    const dateA = parseISO(a.date);
+    const dateB = parseISO(b.date);
+    
+    if (dateA.getTime() !== dateB.getTime()) {
+      return dateA.getTime() - dateB.getTime();
+    }
+    
+    if (a.startTime && b.startTime) {
+      return a.startTime.localeCompare(b.startTime);
+    }
+    
+    return 0;
+  });
 };
 
-export const getPriorityColor = (priority?: string): string => {
-  switch (priority) {
+export const getPriorityColor = (priority: string) => {
+  switch (priority.toLowerCase()) {
     case 'high':
-      return 'text-red-600 bg-red-50 border-red-200';
+      return {
+        bg: 'bg-red-100',
+        text: 'text-red-700',
+        border: 'border-red-300'
+      };
     case 'medium':
-      return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      return {
+        bg: 'bg-yellow-100',
+        text: 'text-yellow-700',
+        border: 'border-yellow-300'
+      };
     case 'low':
-      return 'text-green-600 bg-green-50 border-green-200';
+      return {
+        bg: 'bg-green-100',
+        text: 'text-green-700',
+        border: 'border-green-300'
+      };
     default:
-      return 'text-gray-600 bg-gray-50 border-gray-200';
+      return {
+        bg: 'bg-gray-100',
+        text: 'text-gray-700',
+        border: 'border-gray-300'
+      };
   }
 };
