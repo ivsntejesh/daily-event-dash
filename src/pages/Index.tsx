@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
 import { DailyDashboard } from '@/components/DailyDashboard';
 import { EventForm } from '@/components/EventForm';
 import { CalendarView } from '@/components/CalendarView';
+import { TasksPage } from '@/pages/TasksPage';
 import { AuthPage } from '@/components/AuthPage';
 import { PublicEventsView } from '@/components/PublicEventsView';
 import { Navigation } from '@/components/Navigation';
@@ -12,8 +12,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEvents } from '@/hooks/useEvents';
 import { ViewMode, FormattedEvent } from '@/types/eventTypes';
 
+type ExtendedViewMode = ViewMode | 'tasks';
+
 const Index = () => {
-  const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
+  const [currentView, setCurrentView] = useState<ExtendedViewMode>('dashboard');
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [editingEvent, setEditingEvent] = useState<FormattedEvent | null>(null);
@@ -89,6 +91,8 @@ const Index = () => {
         );
       case 'calendar':
         return <CalendarView events={events} />;
+      case 'tasks':
+        return <TasksPage />;
       case 'create':
         return (
           <EventForm
@@ -124,10 +128,13 @@ const Index = () => {
         {renderView()}
       </main>
 
-      <FloatingActionButton onClick={() => {
-        setEditingEvent(null);
-        setCurrentView('create');
-      }} />
+      {/* Only show FAB for non-task views, TasksPage has its own FAB */}
+      {currentView !== 'tasks' && (
+        <FloatingActionButton onClick={() => {
+          setEditingEvent(null);
+          setCurrentView('create');
+        }} />
+      )}
     </div>
   );
 };

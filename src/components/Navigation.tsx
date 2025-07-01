@@ -1,12 +1,13 @@
 
-import { Plus, Calendar, Home, LogOut } from 'lucide-react';
+import { Plus, Calendar, Home, LogOut, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ViewMode } from '@/types/eventTypes';
+
+type ExtendedViewMode = 'dashboard' | 'calendar' | 'create' | 'tasks';
 
 interface NavigationProps {
-  currentView: ViewMode;
+  currentView: ExtendedViewMode;
   userEmail: string;
-  onViewChange: (view: ViewMode) => void;
+  onViewChange: (view: ExtendedViewMode) => void;
   onSignOut: () => void;
 }
 
@@ -21,7 +22,7 @@ export const Navigation = ({
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-bold">EventHub</h1>
+            <h1 className="text-xl font-bold">TaskHub</h1>
             <span className="text-sm text-muted-foreground">
               Welcome, {userEmail}
             </span>
@@ -35,6 +36,14 @@ export const Navigation = ({
             >
               <Home className="h-4 w-4 mr-2" />
               Dashboard
+            </Button>
+            <Button
+              variant={currentView === 'tasks' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => onViewChange('tasks')}
+            >
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Tasks
             </Button>
             <Button
               variant={currentView === 'calendar' ? 'default' : 'ghost'}
