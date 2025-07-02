@@ -1,6 +1,7 @@
+
 import { useState } from 'react';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
-import { CheckSquare, Calendar, Filter, Plus } from 'lucide-react';
+import { CheckSquare, Calendar, Filter, Plus, Archive } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplet
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showArchive, setShowArchive] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; taskId: string; taskTitle: string }>({
     open: false,
     taskId: '',
@@ -45,21 +47,21 @@ export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplet
     return matchesSearch && matchesPriority && matchesStatus;
   });
 
-  const todayTasks = filteredTasks.filter(task => {
+  // Separate active and completed tasks
+  const activeTasks = filteredTasks.filter(task => !task.isCompleted);
+  const completedTasks = filteredTasks.filter(task => task.isCompleted);
+
+  const todayTasks = activeTasks.filter(task => {
     const taskDate = parseISO(task.date);
     return isToday(taskDate);
   }).sort((a, b) => {
-    // Sort by completion status, then by start time
-    if (a.isCompleted !== b.isCompleted) {
-      return a.isCompleted ? 1 : -1;
-    }
     if (a.startTime && b.startTime) {
       return a.startTime.localeCompare(b.startTime);
     }
     return 0;
   });
 
-  const tomorrowTasks = filteredTasks.filter(task => {
+  const tomorrowTasks = activeTasks.filter(task => {
     const taskDate = parseISO(task.date);
     return isTomorrow(taskDate);
   }).sort((a, b) => {
@@ -151,7 +153,7 @@ export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplet
           />
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Priority" />
@@ -174,20 +176,39 @@ export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplet
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
+
+          <Button
+            variant={showArchive ? "default" : "outline"}
+            onClick={() => setShowArchive(!showArchive)}
+            className="flex items-center gap-2"
+          >
+            <Archive className="h-4 w-4" />
+            {showArchive ? 'Hide Archive' : 'Show Archive'}
+          </Button>
         </div>
       </div>
 
-      <TaskSection
-        title="Today"
-        tasks={todayTasks}
-        icon={<CheckSquare className="h-5 w-5" />}
-      />
+      {!showArchive ? (
+        <>
+          <TaskSection
+            title="Today"
+            tasks={todayTasks}
+            icon={<CheckSquare className="h-5 w-5" />}
+          />
 
-      <TaskSection
-        title="Tomorrow"
-        tasks={tomorrowTasks}
-        icon={<Calendar className="h-5 w-5" />}
-      />
+          <TaskSection
+            title="Tomorrow"
+            tasks={tomorrowTasks}
+            icon={<Calendar className="h-5 w-5" />}
+          />
+        </>
+      ) : (
+        <TaskSection
+          title="Completed Tasks (Archive)"
+          tasks={completedTasks}
+          icon={<Archive className="h-5 w-5" />}
+        />
+      )}
 
       <ConfirmDialog
         open={deleteConfirm.open}

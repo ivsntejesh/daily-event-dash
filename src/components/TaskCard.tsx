@@ -53,6 +53,13 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
     }
   };
 
+  const formatDeadline = (date: string) => {
+    const taskDate = parseISO(date);
+    if (isToday(taskDate)) return 'Today';
+    if (isTomorrow(taskDate)) return 'Tomorrow';
+    return format(taskDate, 'MMM d, yyyy');
+  };
+
   return (
     <Card className={`mb-3 ${active ? 'border-blue-500 bg-blue-50' : ''} ${isPublic ? 'border-purple-200 bg-purple-50' : ''} ${task.isCompleted ? 'opacity-60' : ''}`}>
       <CardContent className="p-4">
@@ -64,7 +71,13 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
               className="mt-1"
             />
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <div className="flex items-center gap-1 text-orange-600">
+                  <Calendar className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    {formatDeadline(task.date)}
+                  </span>
+                </div>
                 {task.startTime && task.endTime && (
                   <>
                     <Clock className="h-4 w-4 text-muted-foreground" />
