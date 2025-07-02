@@ -53,11 +53,28 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
     }
   };
 
-  const formatDeadline = (date: string) => {
+  const formatDeadline = (date: string, startTime?: string, endTime?: string) => {
     const taskDate = parseISO(date);
-    if (isToday(taskDate)) return 'Today';
-    if (isTomorrow(taskDate)) return 'Tomorrow';
-    return format(taskDate, 'MMM d, yyyy');
+    let dateStr = '';
+    
+    if (isToday(taskDate)) {
+      dateStr = 'Today';
+    } else if (isTomorrow(taskDate)) {
+      dateStr = 'Tomorrow';
+    } else {
+      dateStr = format(taskDate, 'MMM d, yyyy');
+    }
+
+    // Add time information if available
+    if (startTime && endTime) {
+      return `${dateStr} (${startTime} - ${endTime})`;
+    } else if (startTime) {
+      return `${dateStr} at ${startTime}`;
+    } else if (endTime) {
+      return `${dateStr} by ${endTime}`;
+    }
+    
+    return dateStr;
   };
 
   return (
@@ -65,27 +82,21 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1">
-            <Checkbox
-              checked={task.isCompleted}
-              onCheckedChange={handleToggleComplete}
-              className="mt-1"
-            />
+            {showActions && (
+              <Checkbox
+                checked={task.isCompleted}
+                onCheckedChange={handleToggleComplete}
+                className="mt-1"
+              />
+            )}
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <div className="flex items-center gap-1 text-orange-600">
                   <Calendar className="h-4 w-4" />
                   <span className="text-sm font-medium">
-                    {formatDeadline(task.date)}
+                    {formatDeadline(task.date, task.startTime, task.endTime)}
                   </span>
                 </div>
-                {task.startTime && task.endTime && (
-                  <>
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">
-                      {task.startTime} - {task.endTime}
-                    </span>
-                  </>
-                )}
                 {active && (
                   <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                     Active

@@ -1,14 +1,13 @@
-
 import { useState } from 'react';
 import { format, isToday, isTomorrow, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-import { Clock, MapPin, Video, Calendar, Globe, LogIn, UserPlus, ExternalLink, CheckSquare } from 'lucide-react';
+import { Clock, MapPin, Video, Calendar, Globe, LogIn, UserPlus, ExternalLink, CheckSquare, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePublicEventsAnonymous } from '@/hooks/usePublicEventsAnonymous';
 import { usePublicTasksAnonymous } from '@/hooks/usePublicTasksAnonymous';
 import { formatPublicEvent } from '@/utils/eventUtils';
-import { formatPublicTask } from '@/utils/taskUtils';
+import { formatPublicTask, getPriorityColor } from '@/utils/taskUtils';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface PublicEventsViewProps {
@@ -87,6 +86,32 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
     return a.date.localeCompare(b.date);
   });
 
+  const formatTaskDeadline = (date: string, startTime?: string, endTime?: string, showDate = false) => {
+    const taskDate = parseISO(date);
+    let dateStr = '';
+    
+    if (showDate) {
+      dateStr = format(taskDate, 'MMM d');
+    } else if (isToday(taskDate)) {
+      dateStr = 'Today';
+    } else if (isTomorrow(taskDate)) {
+      dateStr = 'Tomorrow';
+    } else {
+      dateStr = format(taskDate, 'MMM d');
+    }
+
+    // Add time information if available
+    if (startTime && endTime) {
+      return `${dateStr} (${startTime} - ${endTime})`;
+    } else if (startTime) {
+      return `${dateStr} at ${startTime}`;
+    } else if (endTime) {
+      return `${dateStr} by ${endTime}`;
+    }
+    
+    return dateStr;
+  };
+
   const EventCard = ({ event, showDate = false }: { event: any; showDate?: boolean }) => (
     <Card className="mb-3 border-blue-200 bg-blue-50">
       <CardContent className="p-4">
@@ -146,47 +171,48 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
     </Card>
   );
 
-  const TaskCard = ({ task, showDate = false }: { task: any; showDate?: boolean }) => (
-    <Card className="mb-3 border-green-200 bg-green-50">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              {showDate && (
-                <span className="text-sm font-medium text-green-700">
-                  {format(parseISO(task.date), 'MMM d')} •
-                </span>
-              )}
-              {task.startTime && task.endTime && (
-                <>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+  const TaskCard = ({ task, showDate = false }: { task: any; showDate?: boolean }) => {
+    const priorityColor = getPriorityColor(task.priority || 'medium');
+    
+    return (
+      <Card className="mb-3 border-green-200 bg-green-50">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <div className="flex items-center gap-1 text-orange-600">
+                  <Calendar className="h-4 w-4" />
                   <span className="text-sm font-medium">
-                    {task.startTime} - {task.endTime}
+                    {formatTaskDeadline(task.date, task.startTime, task.endTime, showDate)}
                   </span>
-                </>
-              )}
-              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
-                <Globe className="h-3 w-3 mr-1" />
-                Public Task
-              </Badge>
-              {task.priority && (
-                <Badge variant="outline" className="text-xs">
-                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                </div>
+                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                  <Globe className="h-3 w-3 mr-1" />
+                  Public Task
                 </Badge>
+                {task.priority && (
+                  <Badge 
+                    variant="outline" 
+                    className={`${priorityColor.bg} ${priorityColor.text} ${priorityColor.border}`}
+                  >
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                  </Badge>
+                )}
+              </div>
+              <h3 className="font-semibold mb-1">{task.title}</h3>
+              {task.description && (
+                <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
+              )}
+              {task.notes && (
+                <p className="text-xs text-muted-foreground">{task.notes}</p>
               )}
             </div>
-            <h3 className="font-semibold mb-1">{task.title}</h3>
-            {task.description && (
-              <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
-            )}
-            {task.notes && (
-              <p className="text-xs text-muted-foreground">{task.notes}</p>
-            )}
           </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   const ContentSection = ({ title, events, tasks, icon }: { 
     title: string; 
