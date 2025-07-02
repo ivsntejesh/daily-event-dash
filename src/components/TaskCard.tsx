@@ -1,12 +1,13 @@
 
 import { format, isToday, isTomorrow, parseISO, isAfter, isBefore } from 'date-fns';
-import { Clock, CheckCircle, Circle, Calendar, Globe, Edit, Trash2, AlertCircle } from 'lucide-react';
+import { Clock, CheckCircle, Circle, Calendar, Globe, Edit, Trash2, AlertCircle, Crown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormattedTask } from '@/types/taskTypes';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { getPriorityColor } from '@/utils/taskUtils';
 
 interface TaskCardProps {
@@ -19,6 +20,7 @@ interface TaskCardProps {
 
 export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions = false }: TaskCardProps) => {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const now = new Date();
   
   const isTaskActive = () => {
@@ -44,7 +46,8 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
   // Check if the current user can edit this task
   const canEdit = user && (
     (!isPublic) || // Private tasks can be edited by owner (handled by RLS)
-    (isPublic && task.userId === user.id) // Public tasks can only be edited by creator
+    (isPublic && task.userId === user.id) || // Public tasks can be edited by creator
+    (isPublic && isAdmin()) // Admins can edit any public task
   );
 
   const handleToggleComplete = () => {
@@ -106,6 +109,12 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
                   <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">
                     <Globe className="h-3 w-3 mr-1" />
                     Public
+                  </Badge>
+                )}
+                {isPublic && isAdmin() && task.userId !== user?.id && (
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Admin Access
                   </Badge>
                 )}
                 <Badge 

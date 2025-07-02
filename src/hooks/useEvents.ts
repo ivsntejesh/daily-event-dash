@@ -1,6 +1,7 @@
 
 import { useSupabaseEvents } from './useSupabaseEvents';
 import { usePublicEvents } from './usePublicEvents';
+import { useUserRole } from './useUserRole';
 import { combineAndSortEvents } from '@/utils/eventUtils';
 import { FormattedEvent } from '@/types/eventTypes';
 
@@ -18,6 +19,8 @@ export const useEvents = () => {
     deletePublicEvent,
     loading: publicLoading 
   } = usePublicEvents();
+
+  const { isAdmin } = useUserRole();
 
   const allEvents: FormattedEvent[] = combineAndSortEvents(privateEvents, publicEvents);
   
@@ -75,5 +78,6 @@ export const useEvents = () => {
     saveEvent: handleSaveEvent,
     updateEvent: handleUpdateEvent,
     deleteEvent: handleDeleteEvent,
+    isAdmin,
   };
 };

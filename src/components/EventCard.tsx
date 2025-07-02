@@ -1,11 +1,12 @@
 
 import { format, isToday, isTomorrow, parseISO, isAfter, isBefore } from 'date-fns';
-import { Clock, MapPin, Video, Calendar, Globe, ExternalLink, Edit, Trash2 } from 'lucide-react';
+import { Clock, MapPin, Video, Calendar, Globe, ExternalLink, Edit, Trash2, Crown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FormattedEvent } from '@/types/eventTypes';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface EventCardProps {
   event: FormattedEvent;
@@ -16,6 +17,7 @@ interface EventCardProps {
 
 export const EventCard = ({ event, onEdit, onDelete, showActions = false }: EventCardProps) => {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const now = new Date();
   
   const isEventOngoing = () => {
@@ -40,7 +42,8 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false }: Even
   // Check if the current user can edit this event
   const canEdit = user && (
     (!isPublic) || // Private events can be edited by owner (handled by RLS)
-    (isPublic && event.userId === user.id) // Public events can only be edited by creator
+    (isPublic && event.userId === user.id) || // Public events can be edited by creator
+    (isPublic && isAdmin()) // Admins can edit any public event
   );
 
   console.log('EventCard debug:', {
@@ -49,6 +52,7 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false }: Even
     isPublic,
     eventUserId: event.userId,
     currentUserId: user?.id,
+    isAdmin: isAdmin(),
     canEdit,
     showActions
   });
@@ -58,7 +62,7 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false }: Even
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">
                 {event.startTime} - {event.endTime}
@@ -72,6 +76,12 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false }: Even
                 <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
                   <Globe className="h-3 w-3 mr-1" />
                   Public
+                </Badge>
+              )}
+              {isPublic && isAdmin() && event.userId !== user?.id && (
+                <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
+                  <Crown className="h-3 w-3 mr-1" />
+                  Admin Access
                 </Badge>
               )}
             </div>

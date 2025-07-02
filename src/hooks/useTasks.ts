@@ -1,6 +1,7 @@
 
 import { useSupabaseTasks } from './useSupabaseTasks';
 import { usePublicTasks } from './usePublicTasks';
+import { useUserRole } from './useUserRole';
 import { combineAndSortTasks } from '@/utils/taskUtils';
 import { FormattedTask } from '@/types/taskTypes';
 
@@ -22,6 +23,8 @@ export const useTasks = () => {
     togglePublicTaskCompletion,
     loading: publicLoading 
   } = usePublicTasks();
+
+  const { isAdmin } = useUserRole();
 
   const allTasks: FormattedTask[] = combineAndSortTasks(privateTasks, publicTasks);
   
@@ -92,5 +95,6 @@ export const useTasks = () => {
     updateTask: handleUpdateTask,
     deleteTask: handleDeleteTask,
     toggleTaskCompletion: handleToggleTaskCompletion,
+    isAdmin,
   };
 };
