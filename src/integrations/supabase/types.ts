@@ -68,6 +68,8 @@ export type Database = {
           location: string | null
           meeting_link: string | null
           notes: string | null
+          sheet_id: string | null
+          sheet_row_index: number | null
           start_time: string
           title: string
           updated_at: string
@@ -83,6 +85,8 @@ export type Database = {
           location?: string | null
           meeting_link?: string | null
           notes?: string | null
+          sheet_id?: string | null
+          sheet_row_index?: number | null
           start_time: string
           title: string
           updated_at?: string
@@ -98,6 +102,8 @@ export type Database = {
           location?: string | null
           meeting_link?: string | null
           notes?: string | null
+          sheet_id?: string | null
+          sheet_row_index?: number | null
           start_time?: string
           title?: string
           updated_at?: string
@@ -115,6 +121,8 @@ export type Database = {
           is_completed: boolean
           notes: string | null
           priority: string | null
+          sheet_id: string | null
+          sheet_row_index: number | null
           start_time: string | null
           title: string
           updated_at: string
@@ -129,6 +137,8 @@ export type Database = {
           is_completed?: boolean
           notes?: string | null
           priority?: string | null
+          sheet_id?: string | null
+          sheet_row_index?: number | null
           start_time?: string | null
           title: string
           updated_at?: string
@@ -143,10 +153,51 @@ export type Database = {
           is_completed?: boolean
           notes?: string | null
           priority?: string | null
+          sheet_id?: string | null
+          sheet_row_index?: number | null
           start_time?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      sync_log: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          items_created: number | null
+          items_processed: number | null
+          items_updated: number | null
+          metadata: Json | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["sync_status"]
+          sync_type: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          items_created?: number | null
+          items_processed?: number | null
+          items_updated?: number | null
+          metadata?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["sync_status"]
+          sync_type: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          items_created?: number | null
+          items_processed?: number | null
+          items_updated?: number | null
+          metadata?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["sync_status"]
+          sync_type?: string
         }
         Relationships: []
       }
@@ -238,6 +289,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      sync_status: "pending" | "success" | "failed" | "skipped"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -354,6 +406,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      sync_status: ["pending", "success", "failed", "skipped"],
     },
   },
 } as const

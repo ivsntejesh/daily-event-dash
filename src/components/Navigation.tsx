@@ -1,76 +1,156 @@
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
+import {
+  Home,
+  Calendar,
+  ListChecks,
+  Users,
+  Settings,
+  LogOut,
+  LogIn,
+  UserPlus,
+  RefreshCw
+} from 'lucide-react';
 
-import { Plus, Calendar, Home, LogOut, CheckSquare } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+export const Navigation = () => {
+  const { user, signOut } = useAuth();
+  const { isAdmin } = useUserRole();
+  const location = useLocation();
 
-type ExtendedViewMode = 'dashboard' | 'calendar' | 'create' | 'tasks';
-
-interface NavigationProps {
-  currentView: ExtendedViewMode;
-  userEmail: string;
-  onViewChange: (view: ExtendedViewMode) => void;
-  onSignOut: () => void;
-}
-
-export const Navigation = ({ 
-  currentView, 
-  userEmail, 
-  onViewChange, 
-  onSignOut 
-}: NavigationProps) => {
   return (
-    <nav className="border-b bg-card">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-bold">TaskHub</h1>
-            <span className="text-sm text-muted-foreground">
-              Welcome, {userEmail}
-            </span>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Button
-              variant={currentView === 'dashboard' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => onViewChange('dashboard')}
+    <nav className="bg-secondary border-r border-r-muted w-60 flex flex-col h-full">
+      <div className="p-4 flex-grow">
+        <h1 className="font-bold text-2xl mb-4">TaskMaster</h1>
+        <ul className="space-y-1">
+          <li>
+            <Link
+              to="/"
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                location.pathname === '/'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
             >
-              <Home className="h-4 w-4 mr-2" />
-              Dashboard
-            </Button>
-            <Button
-              variant={currentView === 'tasks' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => onViewChange('tasks')}
+              <Home className="h-4 w-4" />
+              <span>Dashboard</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/calendar"
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                location.pathname === '/calendar'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
             >
-              <CheckSquare className="h-4 w-4 mr-2" />
-              Tasks
-            </Button>
-            <Button
-              variant={currentView === 'calendar' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => onViewChange('calendar')}
+              <Calendar className="h-4 w-4" />
+              <span>Calendar</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/tasks"
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                location.pathname === '/tasks'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
             >
-              <Calendar className="h-4 w-4 mr-2" />
-              Calendar
-            </Button>
-            <Button
-              variant={currentView === 'create' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => onViewChange('create')}
+              <ListChecks className="h-4 w-4" />
+              <span>Tasks</span>
+            </Link>
+          </li>
+          {isAdmin && (
+            <li>
+              <Link
+                to="/users"
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  location.pathname === '/users'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Users</span>
+              </Link>
+            </li>
+          )}
+          {isAdmin && (
+            <Link
+              to="/sync"
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                location.pathname === '/sync'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              New Event
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onSignOut}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
+              <RefreshCw className="h-4 w-4" />
+              <span>Sync</span>
+            </Link>
+          )}
+        </ul>
+      </div>
+
+      <div className="p-4 pt-8 border-t border-t-muted">
+        <ul className="space-y-1">
+          {user ? (
+            <>
+              <li>
+                <Link
+                  to="/settings"
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    location.pathname === '/settings'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </li>
+              <li>
+                <button
+                  onClick={signOut}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted w-full justify-start"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </button>
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <Link
+                  to="/login"
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    location.pathname === '/login'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <LogIn className="h-4 w-4" />
+                  <span>Login</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/register"
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    location.pathname === '/register'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>Register</span>
+                </Link>
+              </li>
+            </>
+          )}
+        </ul>
       </div>
     </nav>
   );
