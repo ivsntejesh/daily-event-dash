@@ -29,23 +29,32 @@ export const SyncDashboard = () => {
   const { toast } = useToast();
 
   const fetchSyncLogs = async () => {
+    if (!isAdmin()) {
+      console.log('User is not admin, skipping sync logs fetch');
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log('Fetching sync logs...');
       const { data, error } = await supabase
         .from('sync_log')
         .select('*')
         .order('started_at', { ascending: false })
         .limit(10);
 
-      if (error) throw error;
-      setSyncLogs(data || []);
+      if (error) {
+        console.error('Supabase error fetching sync logs:', error);
+        throw error;
+      }
       
       console.log('Successfully fetched sync logs:', data?.length || 0, 'records');
+      setSyncLogs(data || []);
     } catch (error) {
       console.error('Error fetching sync logs:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch sync logs. Please check your connection and try again.",
+        description: "Failed to fetch sync logs. Please check your permissions and try again.",
         variant: "destructive",
       });
     } finally {
@@ -63,21 +72,23 @@ export const SyncDashboard = () => {
       });
 
       if (error) {
-        console.error('Sync function error:', error);
+        console.error('Manual sync error:', error);
         throw error;
       }
 
-      console.log('Sync response:', data);
+      console.log('Manual sync response:', data);
       
       toast({
         title: "Success",
         description: "Manual sync triggered successfully. Check the logs below for results.",
       });
 
-      // Refresh logs after a short delay to see the new sync
-      setTimeout(fetchSyncLogs, 3000);
+      // Refresh logs after sync completes
+      setTimeout(() => {
+        fetchSyncLogs();
+      }, 3000);
     } catch (error) {
-      console.error('Error triggering sync:', error);
+      console.error('Error triggering manual sync:', error);
       toast({
         title: "Error",
         description: `Failed to trigger manual sync: ${error.message || 'Unknown error'}`,
@@ -115,13 +126,14 @@ export const SyncDashboard = () => {
     }
   };
 
+  // Only fetch logs when component mounts and user is admin
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin()) {
       fetchSyncLogs();
     }
-  }, [isAdmin]);
+  }, [isAdmin()]);
 
-  if (!isAdmin) {
+  if (!isAdmin()) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
@@ -202,6 +214,7 @@ export const SyncDashboard = () => {
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• Automatic sync: Every 6 hours</li>
                   <li>• Source: Google Sheets</li>
+                  <li>• Sheet ID: 1-FuahakizPAMcPHsvcwVhs0OjBA1G8lAs3SurgZuXnY</li>
                   <li>• Targets: Public Events & Tasks</li>
                 </ul>
               </div>
