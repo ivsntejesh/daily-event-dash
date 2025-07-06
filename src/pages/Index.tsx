@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { DailyDashboard } from '@/components/DailyDashboard';
 import { EventForm } from '@/components/EventForm';
@@ -117,12 +118,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation 
-        currentView={currentView}
-        userEmail={user.email || ''}
-        onViewChange={setCurrentView}
-        onSignOut={handleSignOut}
-      />
+      <Navigation />
 
       <main className="pb-16">
         {renderView()}

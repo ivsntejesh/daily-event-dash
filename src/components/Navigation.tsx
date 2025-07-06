@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Calendar, CheckSquare, Users, Globe, Settings, Sync } from 'lucide-react';
+import { Menu, Calendar, CheckSquare, Users, Globe, Settings, RefreshCw } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
 
@@ -23,7 +23,7 @@ export const Navigation = () => {
   ];
 
   if (isAdmin) {
-    navItems.push({ to: '/sync', icon: Sync, label: 'Sync Management' });
+    navItems.push({ to: '/sync', icon: RefreshCw, label: 'Sync Management' });
   }
 
   return (
