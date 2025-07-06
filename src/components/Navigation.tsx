@@ -1,157 +1,86 @@
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu, Calendar, CheckSquare, Users, Globe, Settings, Sync } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import {
-  Home,
-  Calendar,
-  ListChecks,
-  Users,
-  Settings,
-  LogOut,
-  LogIn,
-  UserPlus,
-  RefreshCw
-} from 'lucide-react';
 
 export const Navigation = () => {
-  const { user, signOut } = useAuth();
-  const { isAdmin } = useUserRole();
+  const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { isAdmin } = useUserRole();
+
+  const isActive = (path: string) => location.pathname === path;
+
+  const navItems = [
+    { to: '/', icon: Calendar, label: 'Dashboard' },
+    { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
+    { to: '/events', icon: Calendar, label: 'Events' },
+    { to: '/public-events', icon: Globe, label: 'Public Events' },
+    { to: '/public-tasks', icon: Users, label: 'Public Tasks' },
+    { to: '/account', icon: Settings, label: 'Account' },
+  ];
+
+  if (isAdmin) {
+    navItems.push({ to: '/sync', icon: Sync, label: 'Sync Management' });
+  }
 
   return (
-    <nav className="bg-secondary border-r border-r-muted w-60 flex flex-col h-full">
-      <div className="p-4 flex-grow">
-        <h1 className="font-bold text-2xl mb-4">TaskMaster</h1>
-        <ul className="space-y-1">
-          <li>
-            <Link
-              to="/"
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                location.pathname === '/'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              <Home className="h-4 w-4" />
-              <span>Dashboard</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/calendar"
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                location.pathname === '/calendar'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              <Calendar className="h-4 w-4" />
-              <span>Calendar</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/tasks"
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                location.pathname === '/tasks'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              <ListChecks className="h-4 w-4" />
-              <span>Tasks</span>
-            </Link>
-          </li>
-          {isAdmin && (
-            <li>
+    <header className="bg-background border-b sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <Link to="/" className="text-xl font-bold">
+            Dashboard
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex space-x-8">
+            {navItems.map((item) => (
               <Link
-                to="/users"
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  location.pathname === '/users'
+                key={item.to}
+                to={item.to}
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive(item.to)
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                 }`}
               >
-                <Users className="h-4 w-4" />
-                <span>Users</span>
+                <item.icon className="h-4 w-4 mr-2" />
+                {item.label}
               </Link>
-            </li>
-          )}
-          {isAdmin && (
-            <Link
-              to="/sync"
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                location.pathname === '/sync'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span>Sync</span>
-            </Link>
-          )}
-        </ul>
-      </div>
+            ))}
+          </nav>
 
-      <div className="p-4 pt-8 border-t border-t-muted">
-        <ul className="space-y-1">
-          {user ? (
-            <>
-              <li>
-                <Link
-                  to="/settings"
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    location.pathname === '/settings'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </li>
-              <li>
-                <button
-                  onClick={signOut}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted w-full justify-start"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Logout</span>
-                </button>
-              </li>
-            </>
-          ) : (
-            <>
-              <li>
-                <Link
-                  to="/login"
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    location.pathname === '/login'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <LogIn className="h-4 w-4" />
-                  <span>Login</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/register"
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    location.pathname === '/register'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <UserPlus className="h-4 w-4" />
-                  <span>Register</span>
-                </Link>
-              </li>
-            </>
-          )}
-        </ul>
+          {/* Mobile Navigation */}
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <nav className="flex flex-col space-y-4 mt-8">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setIsOpen(false)}
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive(item.to)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4 mr-2" />
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
-    </nav>
+    </header>
   );
 };
