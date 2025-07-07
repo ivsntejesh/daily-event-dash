@@ -117,11 +117,14 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               {showDate && (
-                <span className="text-sm font-medium text-blue-700">
-                  {format(parseISO(event.date), 'MMM d')} •
-                </span>
+                <>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-blue-700">
+                    {format(parseISO(event.date), 'MMM d')} •
+                  </span>
+                </>
               )}
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">

@@ -82,6 +82,7 @@ export const DailyDashboard = ({ events, onEditEvent, onDeleteEvent }: DailyDash
             onEdit={onEditEvent}
             onDelete={(eventId) => handleDeleteEvent(eventId, event.title)}
             showActions={true}
+            showDate={false}
           />
         ))
       ) : (

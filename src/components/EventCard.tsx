@@ -13,9 +13,10 @@ interface EventCardProps {
   onEdit?: (event: FormattedEvent) => void;
   onDelete?: (eventId: string) => void;
   showActions?: boolean;
+  showDate?: boolean;
 }
 
-export const EventCard = ({ event, onEdit, onDelete, showActions = false }: EventCardProps) => {
+export const EventCard = ({ event, onEdit, onDelete, showActions = false, showDate = false }: EventCardProps) => {
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
   const now = new Date();
@@ -34,6 +35,17 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false }: Even
     eventEnd.setHours(endHours, endMinutes, 0, 0);
     
     return isAfter(now, eventStart) && isBefore(now, eventEnd);
+  };
+
+  const formatEventDate = (date: string) => {
+    const eventDate = parseISO(date);
+    if (isToday(eventDate)) {
+      return 'Today';
+    } else if (isTomorrow(eventDate)) {
+      return 'Tomorrow';
+    } else {
+      return format(eventDate, 'MMM d, yyyy');
+    }
   };
 
   const ongoing = isEventOngoing();
@@ -63,6 +75,14 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false }: Even
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {showDate && (
+                <>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-primary">
+                    {formatEventDate(event.date)} •
+                  </span>
+                </>
+              )}
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">
                 {event.startTime} - {event.endTime}
