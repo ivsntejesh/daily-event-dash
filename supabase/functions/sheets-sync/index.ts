@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -20,7 +19,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-const SHEET_ID = '1-FuahakizPAMcPHsvcwVhs0OjBA1G8lAs3SurgZuXnY';
+const SHEET_ID = '1lZMQpzzIJpSeKefA8r2H6HbyNnBtTPVwhSqlm6pSOoU';
 const SHEET_RANGE = 'A:E'; // Assuming columns A-E contain the data
 
 serve(async (req: Request) => {
@@ -57,10 +56,14 @@ serve(async (req: Request) => {
     }
 
     const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_RANGE}?key=${apiKey}`;
+    console.log('Fetching from Google Sheets:', sheetsUrl);
+    
     const response = await fetch(sheetsUrl);
     
     if (!response.ok) {
-      throw new Error(`Google Sheets API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Google Sheets API error:', response.status, errorText);
+      throw new Error(`Google Sheets API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
