@@ -6,8 +6,6 @@ import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { TasksPage } from './pages/TasksPage';
 import { EventsPage } from './pages/EventsPage';
-import { PublicTasksPage } from './pages/PublicTasksPage';
-import { PublicEventsPage } from './pages/PublicEventsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navigation } from './components/Navigation';
 import { SyncPage } from './pages/SyncPage';
@@ -20,8 +18,6 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<HomePage />} />
-          <Route path="/public-tasks" element={<PublicTasksPage />} />
-          <Route path="/public-events" element={<PublicEventsPage />} />
 
           <Route
             path="/account"

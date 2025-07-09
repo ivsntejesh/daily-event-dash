@@ -6,7 +6,6 @@ import { CalendarView } from '@/components/CalendarView';
 import { TasksPage } from '@/pages/TasksPage';
 import { AuthPage } from '@/components/AuthPage';
 import { PublicEventsView } from '@/components/PublicEventsView';
-import { Navigation } from '@/components/Navigation';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Button } from '@/components/ui/button';
@@ -75,12 +74,6 @@ const Index = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    setShowAuth(false);
-    setCurrentView('dashboard');
-  };
-
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
@@ -121,8 +114,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
       {/* View switcher for logged-in users */}
       {user && (
         <div className="flex justify-center gap-2 p-4 border-b">
