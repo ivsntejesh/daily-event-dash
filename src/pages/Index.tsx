@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEvents } from '@/hooks/useEvents';
 import { ViewMode, FormattedEvent } from '@/types/eventTypes';
+import { useTasks } from '@/hooks/useTasks';
 
 type ExtendedViewMode = ViewMode | 'tasks' | 'calendar';
 
@@ -22,6 +23,7 @@ const Index = () => {
   const [editingEvent, setEditingEvent] = useState<FormattedEvent | null>(null);
   const { user, signOut, loading: authLoading } = useAuth();
   const { events, saveEvent, updateEvent, deleteEvent } = useEvents();
+  const { tasks } = useTasks();
 
   if (authLoading) {
     return <LoadingSpinner />;

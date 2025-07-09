@@ -17,8 +17,6 @@ export const Navigation = () => {
     { to: '/', icon: Calendar, label: 'Dashboard' },
     { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
     { to: '/events', icon: Calendar, label: 'Events' },
-    { to: '/public-events', icon: Globe, label: 'Public Events' },
-    { to: '/public-tasks', icon: Users, label: 'Public Tasks' },
     { to: '/account', icon: Settings, label: 'Account' },
   ];
 
