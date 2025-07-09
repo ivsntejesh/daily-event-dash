@@ -9,11 +9,12 @@ import { PublicEventsView } from '@/components/PublicEventsView';
 import { Navigation } from '@/components/Navigation';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEvents } from '@/hooks/useEvents';
 import { ViewMode, FormattedEvent } from '@/types/eventTypes';
 
-type ExtendedViewMode = ViewMode | 'tasks';
+type ExtendedViewMode = ViewMode | 'tasks' | 'calendar';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<ExtendedViewMode>('dashboard');
@@ -88,6 +89,7 @@ const Index = () => {
             events={events} 
             onEditEvent={handleEditEvent}
             onDeleteEvent={handleDeleteEvent}
+            showDates={true}
           />
         );
       case 'calendar':
@@ -111,6 +113,7 @@ const Index = () => {
             events={events} 
             onEditEvent={handleEditEvent}
             onDeleteEvent={handleDeleteEvent}
+            showDates={true}
           />
         );
     }
@@ -119,6 +122,30 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+
+      {/* View switcher for logged-in users */}
+      {user && (
+        <div className="flex justify-center gap-2 p-4 border-b">
+          <Button
+            variant={currentView === 'dashboard' ? 'default' : 'outline'}
+            onClick={() => setCurrentView('dashboard')}
+          >
+            Dashboard
+          </Button>
+          <Button
+            variant={currentView === 'calendar' ? 'default' : 'outline'}
+            onClick={() => setCurrentView('calendar')}
+          >
+            Calendar
+          </Button>
+          <Button
+            variant={currentView === 'tasks' ? 'default' : 'outline'}
+            onClick={() => setCurrentView('tasks')}
+          >
+            Tasks
+          </Button>
+        </div>
+      )}
 
       <main className="pb-16">
         {renderView()}

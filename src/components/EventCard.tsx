@@ -1,4 +1,3 @@
-
 import { format, isToday, isTomorrow, parseISO, isAfter, isBefore } from 'date-fns';
 import { Clock, MapPin, Video, Calendar, Globe, ExternalLink, Edit, Trash2, Crown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';

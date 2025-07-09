@@ -14,9 +14,10 @@ interface DailyDashboardProps {
   events: FormattedEvent[];
   onEditEvent?: (event: FormattedEvent) => void;
   onDeleteEvent?: (eventId: string) => Promise<void>;
+  showDates?: boolean;
 }
 
-export const DailyDashboard = ({ events, onEditEvent, onDeleteEvent }: DailyDashboardProps) => {
+export const DailyDashboard = ({ events, onEditEvent, onDeleteEvent, showDates = true }: DailyDashboardProps) => {
   const now = new Date();
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<EventFilters>({
@@ -82,7 +83,7 @@ export const DailyDashboard = ({ events, onEditEvent, onDeleteEvent }: DailyDash
             onEdit={onEditEvent}
             onDelete={(eventId) => handleDeleteEvent(eventId, event.title)}
             showActions={true}
-            showDate={false}
+            showDate={showDates}
           />
         ))
       ) : (
