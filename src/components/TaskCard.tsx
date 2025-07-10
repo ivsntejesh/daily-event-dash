@@ -47,6 +47,7 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
   const canEdit = user && (
     (!isPublic) || // Private tasks can be edited by owner (handled by RLS)
     (isPublic && task.userId === user.id) || // Public tasks can be edited by creator
+    (isPublic && task.userId === null && isAdmin()) || // Admins can edit sheet-synced tasks (user_id is null)
     (isPublic && isAdmin()) // Admins can edit any public task
   );
 

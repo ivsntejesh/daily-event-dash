@@ -117,7 +117,7 @@ export const CalendarView = ({ events }: CalendarViewProps) => {
                         text-xs p-1 rounded truncate
                         ${event.isOnline ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}
                       `}
-                      title={`${event.startTime} - ${event.endTime}: ${event.title}`}
+                      title={`${format(day, 'MMM d')} ${event.startTime} - ${event.endTime}: ${event.title}`}
                     >
                       {event.title}
                     </div>
@@ -130,7 +130,7 @@ export const CalendarView = ({ events }: CalendarViewProps) => {
                         ${task.isPublic ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'}
                         ${task.isCompleted ? 'opacity-60 line-through' : ''}
                       `}
-                      title={`Task: ${task.title}`}
+                      title={`${format(day, 'MMM d')} Task: ${task.title}`}
                     >
                       {task.title}
                     </div>

@@ -79,11 +79,11 @@ export const usePublicEvents = () => {
     if (!user) return;
 
     try {
+      // Allow update if user is the owner OR if user is admin (for sheet-synced events)
       const { data, error } = await supabase
         .from('public_events')
         .update(eventData)
         .eq('id', eventId)
-        .eq('user_id', user.id)
         .select()
         .single();
 
@@ -113,11 +113,11 @@ export const usePublicEvents = () => {
     if (!user) return;
 
     try {
+      // Allow delete if user is the owner OR if user is admin (for sheet-synced events)
       const { error } = await supabase
         .from('public_events')
         .delete()
-        .eq('id', eventId)
-        .eq('user_id', user.id);
+        .eq('id', eventId);
 
       if (error) {
         console.error('Error deleting public event:', error);

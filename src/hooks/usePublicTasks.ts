@@ -79,11 +79,11 @@ export const usePublicTasks = () => {
     if (!user) return;
 
     try {
+      // Allow update if user is the owner OR if user is admin (for sheet-synced tasks)
       const { data, error } = await supabase
         .from('public_tasks')
         .update(taskData)
         .eq('id', taskId)
-        .eq('user_id', user.id)
         .select()
         .single();
 
@@ -113,11 +113,11 @@ export const usePublicTasks = () => {
     if (!user) return;
 
     try {
+      // Allow delete if user is the owner OR if user is admin (for sheet-synced tasks)
       const { error } = await supabase
         .from('public_tasks')
         .delete()
-        .eq('id', taskId)
-        .eq('user_id', user.id);
+        .eq('id', taskId);
 
       if (error) {
         console.error('Error deleting public task:', error);
