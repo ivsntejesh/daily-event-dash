@@ -23,102 +23,41 @@ async function syncGoogleSheets(syncLogId: string) {
   const errors: any[] = [];
 
   try {
-    // Get spreadsheet IDs from environment variables or use demo values
-    const EVENTS_SHEET_ID = process.env.EVENTS_SHEET_ID || "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms";
-    const TASKS_SHEET_ID = process.env.TASKS_SHEET_ID || "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms";
+    // Get spreadsheet IDs from environment variables or use user's sheet
+    const EVENTS_SHEET_ID = process.env.EVENTS_SHEET_ID || "1lZMQpzzIJpSeKefA8r2H6HbyNnBtTPVwhSqlm6pSOoU";
+    const TASKS_SHEET_ID = process.env.TASKS_SHEET_ID || "1lZMQpzzIJpSeKefA8r2H6HbyNnBtTPVwhSqlm6pSOoU";
     
-    // Sync Events from Google Sheets
+    // Sync data from Google Sheets (treating as tasks based on your sheet structure)
     try {
-      console.log(`Fetching events from sheet ID: ${EVENTS_SHEET_ID}`);
-      const eventsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${EVENTS_SHEET_ID}/values/Sheet1!A:L?key=${API_KEY}`;
-      console.log(`Events URL: ${eventsUrl}`);
-      const eventsResponse = await fetch(eventsUrl);
+      console.log(`Fetching data from sheet ID: ${EVENTS_SHEET_ID}`);
+      const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${EVENTS_SHEET_ID}/values/Sheet1!A:J?key=${API_KEY}`;
+      console.log(`Data URL: ${dataUrl}`);
+      const dataResponse = await fetch(dataUrl);
       
-      console.log(`Events response status: ${eventsResponse.status}`);
+      console.log(`Data response status: ${dataResponse.status}`);
       
-      if (eventsResponse.ok) {
-        const eventsData = await eventsResponse.json();
-        console.log(`Events data:`, eventsData);
-        const rows = eventsData.values || [];
-        console.log(`Found ${rows.length} rows in events sheet`);
+      if (dataResponse.ok) {
+        const data = await dataResponse.json();
+        console.log(`Sheet data:`, data);
+        const rows = data.values || [];
+        console.log(`Found ${rows.length} rows in sheet`);
         
-        // Skip header row
+        // Skip header row (row 0)
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
-          console.log(`Processing event row ${i + 1}:`, row);
-          if (row.length >= 3) { // Minimum required columns (title, description, date)
+          console.log(`Processing row ${i + 1}:`, row);
+          if (row.length >= 2 && row[0] && row[1]) { // Must have title and date
             try {
-              const eventData = {
-                title: row[0] || "Untitled Event",
-                description: row[1] || "",
-                date: row[2] || new Date().toISOString().split('T')[0],
-                startTime: row[3] || "09:00",
-                endTime: row[4] || "10:00",
-                isOnline: (row[5] || "").toLowerCase() === 'true',
-                meetingLink: row[6] || "",
-                location: row[7] || "",
-                notes: row[8] || "",
-                userId: 1 // Default user for sync
-              };
-              
-              console.log(`Creating event:`, eventData);
-              await storage.createPublicEvent(eventData);
-              itemsCreated++;
-              itemsProcessed++;
-            } catch (error) {
-              console.error(`Error creating event from row ${i + 1}:`, error);
-              errors.push({
-                sheet: "Events",
-                row: i + 1,
-                error: error instanceof Error ? error.message : "Unknown error"
-              });
-            }
-          }
-        }
-      } else {
-        const errorText = await eventsResponse.text();
-        console.error(`Failed to fetch events. Status: ${eventsResponse.status}, Response: ${errorText}`);
-        throw new Error(`HTTP ${eventsResponse.status}: ${errorText}`);
-      }
-    } catch (error) {
-      console.error(`Error in events sync:`, error);
-      errors.push({
-        sheet: "Events",
-        row: 0,
-        error: `Failed to fetch events: ${error instanceof Error ? error.message : "Unknown error"}`
-      });
-    }
-
-    // Sync Tasks from Google Sheets  
-    try {
-      console.log(`Fetching tasks from sheet ID: ${TASKS_SHEET_ID}`);
-      const tasksUrl = `https://sheets.googleapis.com/v4/spreadsheets/${TASKS_SHEET_ID}/values/Sheet1!A:J?key=${API_KEY}`;
-      console.log(`Tasks URL: ${tasksUrl}`);
-      const tasksResponse = await fetch(tasksUrl);
-      
-      console.log(`Tasks response status: ${tasksResponse.status}`);
-      
-      if (tasksResponse.ok) {
-        const tasksData = await tasksResponse.json();
-        console.log(`Tasks data:`, tasksData);
-        const rows = tasksData.values || [];
-        console.log(`Found ${rows.length} rows in tasks sheet`);
-        
-        // Skip header row
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          console.log(`Processing task row ${i + 1}:`, row);
-          if (row.length >= 3) { // Minimum required columns (title, description, date)
-            try {
+              // Your sheet structure: Submission, Date, Start Time, End Time, Status, Remarks
               const taskData = {
                 title: row[0] || "Untitled Task",
-                description: row[1] || "",
-                date: row[2] || new Date().toISOString().split('T')[0],
-                startTime: row[3] || "",
-                endTime: row[4] || "",
-                isCompleted: (row[5] || "").toLowerCase() === 'true',
-                priority: row[6] || "medium",
-                notes: row[7] || "",
+                description: row[5] || "", // Remarks column
+                date: row[1] || new Date().toISOString().split('T')[0],
+                startTime: row[2] && row[2].trim() ? row[2] : null,
+                endTime: row[3] && row[3].trim() ? row[3] : null,
+                isCompleted: (row[4] || "").toLowerCase() === 'completed',
+                priority: "medium",
+                notes: row[5] || "",
                 userId: 1 // Default user for sync
               };
               
@@ -137,18 +76,20 @@ async function syncGoogleSheets(syncLogId: string) {
           }
         }
       } else {
-        const errorText = await tasksResponse.text();
-        console.error(`Failed to fetch tasks. Status: ${tasksResponse.status}, Response: ${errorText}`);
-        throw new Error(`HTTP ${tasksResponse.status}: ${errorText}`);
+        const errorText = await dataResponse.text();
+        console.error(`Failed to fetch data. Status: ${dataResponse.status}, Response: ${errorText}`);
+        throw new Error(`HTTP ${dataResponse.status}: ${errorText}`);
       }
     } catch (error) {
-      console.error(`Error in tasks sync:`, error);
+      console.error(`Error in data sync:`, error);
       errors.push({
         sheet: "Tasks",
         row: 0,
-        error: `Failed to fetch tasks: ${error instanceof Error ? error.message : "Unknown error"}`
+        error: `Failed to fetch data: ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
+
+    // Note: Using single sheet for all data, so no separate tasks sync needed
 
     // Update sync log with results
     const status = errors.length > 0 ? "failed" : "success";
