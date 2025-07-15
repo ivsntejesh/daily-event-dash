@@ -112,7 +112,7 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
                     Public
                   </Badge>
                 )}
-                {isPublic && isAdmin() && task.userId !== user?.id && (
+                {isPublic && isAdmin && task.userId !== user?.id && (
                   <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
                     <Crown className="h-3 w-3 mr-1" />
                     Admin Access
