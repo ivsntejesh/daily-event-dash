@@ -8,6 +8,17 @@ This is a modern full-stack web application built with React, Express, and Supab
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**July 15, 2025 - Smart Google Sheets Sync Implementation**
+- Implemented comprehensive smart sync algorithm to prevent duplicates
+- Added duplicate detection using unique keys (title + date + time)
+- Implemented update detection for changed items
+- Added automatic deletion of items removed from sheet
+- Handles both tasks (single time) and events (time ranges) correctly
+- Uses time format normalization for accurate comparisons
+- Edge cases handled: empty fields, different time formats, new additions
+
 ## System Architecture
 
 ### Frontend Architecture

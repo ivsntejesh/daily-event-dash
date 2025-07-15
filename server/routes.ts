@@ -27,10 +27,10 @@ async function syncGoogleSheets(syncLogId: string) {
     const EVENTS_SHEET_ID = process.env.EVENTS_SHEET_ID || "1lZMQpzzIJpSeKefA8r2H6HbyNnBtTPVwhSqlm6pSOoU";
     const TASKS_SHEET_ID = process.env.TASKS_SHEET_ID || "1lZMQpzzIJpSeKefA8r2H6HbyNnBtTPVwhSqlm6pSOoU";
     
-    // Sync data from Google Sheets (treating as tasks based on your sheet structure)
+    // Smart sync from Google Sheets - handles duplicates, updates, and deletions
     try {
       console.log(`Fetching data from sheet ID: ${EVENTS_SHEET_ID}`);
-      const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${EVENTS_SHEET_ID}/values/Sheet1!A1:D20?key=${API_KEY}`;
+      const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${EVENTS_SHEET_ID}/values/Sheet1!A:D?key=${API_KEY}`;
       console.log(`Data URL: ${dataUrl}`);
       const dataResponse = await fetch(dataUrl);
       
@@ -42,24 +42,75 @@ async function syncGoogleSheets(syncLogId: string) {
         const rows = data.values || [];
         console.log(`Found ${rows.length} rows in sheet`);
         
-        // Skip header row (row 0)
+        // Get existing items from database
+        const existingEvents = await storage.getEventsByUser(1);
+        const existingTasks = await storage.getTasksByUser(1);
+        
+        // Create maps for quick lookup by unique key (title + date + time)
+        const existingEventMap = new Map();
+        const existingTaskMap = new Map();
+        
+        // Helper function to normalize time format for comparison
+        const normalizeTime = (time) => {
+          if (!time) return null;
+          const timeStr = time.toString().trim();
+          
+          // Handle PM/AM times from sheet (like "7:00 PM")
+          if (timeStr.includes(' PM') || timeStr.includes(' AM')) {
+            return timeStr;
+          }
+          
+          // Handle database format "HH:MM:SS" -> "H:MM" (remove leading zero and seconds)
+          if (timeStr.includes(':') && timeStr.length >= 5) {
+            return timeStr.substring(0, 5).replace(/^0/, '');
+          }
+          
+          return timeStr;
+        };
+
+        existingEvents.forEach(event => {
+          const startTime = normalizeTime(event.startTime);
+          const endTime = normalizeTime(event.endTime);
+          const key = `${event.title}|${event.date}|${startTime}|${endTime}`;
+          existingEventMap.set(key, event);
+        });
+        
+        existingTasks.forEach(task => {
+          const startTime = normalizeTime(task.startTime);
+          const key = `${task.title}|${task.date}|${startTime}`;
+          existingTaskMap.set(key, task);
+        });
+        
+        // Track items found in sheet (to identify items to delete)
+        const sheetEventKeys = new Set();
+        const sheetTaskKeys = new Set();
+        
+        // Process sheet rows
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           console.log(`Processing row ${i + 1}:`, row);
+          
           if (row.length >= 2 && row[0] && row[1]) { // Must have title and date
             try {
-              // New sheet structure: Title, Date, Time (either single time or range)
-              const title = row[0] || "Untitled";
-              const date = row[1] || new Date().toISOString().split('T')[0];
-              const timeField = row[2] || "";
-              const notes = row[3] || "";
+              const title = row[0].trim();
+              const date = row[1].trim();
+              const timeField = (row[2] || "").trim();
+              const notes = (row[3] || "").trim();
+              
+              // Skip empty titles
+              if (!title) continue;
               
               // Check if time field contains a range (e.g., "7:00 PM - 8:30 PM")
               const isTimeRange = timeField.includes(' - ');
               
               if (isTimeRange) {
-                // Create as Event
+                // Process as Event
                 const [startTime, endTime] = timeField.split(' - ').map(t => t.trim());
+                const normalizedStartTime = normalizeTime(startTime);
+                const normalizedEndTime = normalizeTime(endTime);
+                const eventKey = `${title}|${date}|${normalizedStartTime}|${normalizedEndTime}`;
+                sheetEventKeys.add(eventKey);
+                
                 const eventData = {
                   title,
                   description: notes,
@@ -73,17 +124,43 @@ async function syncGoogleSheets(syncLogId: string) {
                   userId: 1
                 };
                 
-                console.log(`Creating event:`, eventData);
-                await storage.createEvent(eventData);
-                itemsCreated++;
+                const existingEvent = existingEventMap.get(eventKey);
+                
+                if (existingEvent) {
+                  // Check if update is needed
+                  const needsUpdate = 
+                    existingEvent.description !== notes ||
+                    existingEvent.notes !== notes;
+                  
+                  if (needsUpdate) {
+                    console.log(`Updating event:`, eventKey);
+                    await storage.updateEvent(existingEvent.id, {
+                      description: notes,
+                      notes
+                    });
+                    itemsUpdated++;
+                  } else {
+                    console.log(`Event unchanged:`, eventKey);
+                  }
+                } else {
+                  // Create new event
+                  console.log(`Creating new event:`, eventData);
+                  await storage.createEvent(eventData);
+                  itemsCreated++;
+                }
                 itemsProcessed++;
+                
               } else {
-                // Create as Task
+                // Process as Task
+                const normalizedTime = normalizeTime(timeField);
+                const taskKey = `${title}|${date}|${normalizedTime}`;
+                sheetTaskKeys.add(taskKey);
+                
                 const taskData = {
                   title,
                   description: notes,
                   date,
-                  startTime: timeField && timeField.trim() ? timeField : null,
+                  startTime: timeField || null,
                   endTime: null,
                   isCompleted: false,
                   priority: "medium",
@@ -91,13 +168,35 @@ async function syncGoogleSheets(syncLogId: string) {
                   userId: 1
                 };
                 
-                console.log(`Creating task:`, taskData);
-                await storage.createTask(taskData);
-                itemsCreated++;
+                const existingTask = existingTaskMap.get(taskKey);
+                
+                if (existingTask) {
+                  // Check if update is needed
+                  const needsUpdate = 
+                    existingTask.description !== notes ||
+                    existingTask.notes !== notes;
+                  
+                  if (needsUpdate) {
+                    console.log(`Updating task:`, taskKey);
+                    await storage.updateTask(existingTask.id, {
+                      description: notes,
+                      notes
+                    });
+                    itemsUpdated++;
+                  } else {
+                    console.log(`Task unchanged:`, taskKey);
+                  }
+                } else {
+                  // Create new task
+                  console.log(`Creating new task:`, taskData);
+                  await storage.createTask(taskData);
+                  itemsCreated++;
+                }
                 itemsProcessed++;
               }
+              
             } catch (error) {
-              console.error(`Error creating item from row ${i + 1}:`, error);
+              console.error(`Error processing row ${i + 1}:`, error);
               errors.push({
                 sheet: "Sheet1",
                 row: i + 1,
@@ -106,6 +205,30 @@ async function syncGoogleSheets(syncLogId: string) {
             }
           }
         }
+        
+        // Delete items that are no longer in the sheet
+        let itemsDeleted = 0;
+        
+        // Delete events not in sheet
+        for (const [eventKey, event] of existingEventMap) {
+          if (!sheetEventKeys.has(eventKey)) {
+            console.log(`Deleting removed event:`, eventKey);
+            await storage.deleteEvent(event.id);
+            itemsDeleted++;
+          }
+        }
+        
+        // Delete tasks not in sheet
+        for (const [taskKey, task] of existingTaskMap) {
+          if (!sheetTaskKeys.has(taskKey)) {
+            console.log(`Deleting removed task:`, taskKey);
+            await storage.deleteTask(task.id);
+            itemsDeleted++;
+          }
+        }
+        
+        console.log(`Sync completed: ${itemsProcessed} processed, ${itemsCreated} created, ${itemsUpdated} updated, ${itemsDeleted} deleted`);
+        
       } else {
         const errorText = await dataResponse.text();
         console.error(`Failed to fetch data. Status: ${dataResponse.status}, Response: ${errorText}`);
@@ -114,7 +237,7 @@ async function syncGoogleSheets(syncLogId: string) {
     } catch (error) {
       console.error(`Error in data sync:`, error);
       errors.push({
-        sheet: "Tasks",
+        sheet: "Sheet1",
         row: 0,
         error: `Failed to fetch data: ${error instanceof Error ? error.message : "Unknown error"}`
       });
