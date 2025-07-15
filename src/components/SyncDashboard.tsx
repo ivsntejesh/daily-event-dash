@@ -1,13 +1,13 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Clock, CheckCircle, XCircle, AlertCircle, Play } from 'lucide-react';
+import { RefreshCw, Clock, CheckCircle, XCircle, AlertCircle, Play, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface SyncLog {
   id: string;
@@ -19,12 +19,20 @@ interface SyncLog {
   items_created: number | null;
   items_updated: number | null;
   error_message: string | null;
+  metadata: any;
+}
+
+interface SyncError {
+  sheet: string;
+  row: number;
+  error: string;
 }
 
 export const SyncDashboard = () => {
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const { isAdmin } = useUserRole();
   const { toast } = useToast();
 
@@ -41,7 +49,7 @@ export const SyncDashboard = () => {
         .from('sync_log')
         .select('*')
         .order('started_at', { ascending: false })
-        .limit(10);
+        .limit(20); // Increased limit to show more history
 
       if (error) {
         console.error('Supabase error fetching sync logs:', error);
@@ -78,15 +86,23 @@ export const SyncDashboard = () => {
 
       console.log('Manual sync response:', data);
       
-      toast({
-        title: "Success",
-        description: "Manual sync triggered successfully. Check the logs below for results.",
-      });
+      if (data?.skipped) {
+        toast({
+          title: "Sync Skipped",
+          description: "Another sync operation is already in progress. Please wait for it to complete.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: `Manual sync completed. Processed: ${data?.items_processed || 0}, Created: ${data?.items_created || 0}, Updated: ${data?.items_updated || 0}${data?.errors_count ? `, Errors: ${data.errors_count}` : ''}`,
+        });
+      }
 
       // Refresh logs after sync completes
       setTimeout(() => {
         fetchSyncLogs();
-      }, 3000);
+      }, 2000);
     } catch (error) {
       console.error('Error triggering manual sync:', error);
       toast({
@@ -124,6 +140,16 @@ export const SyncDashboard = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const toggleLogExpansion = (logId: string) => {
+    const newExpanded = new Set(expandedLogs);
+    if (newExpanded.has(logId)) {
+      newExpanded.delete(logId);
+    } else {
+      newExpanded.add(logId);
+    }
+    setExpandedLogs(newExpanded);
   };
 
   // Only fetch logs when component mounts and user is admin
@@ -171,12 +197,43 @@ export const SyncDashboard = () => {
     );
   };
 
+  const formatDuration = (startedAt: string, completedAt: string | null) => {
+    if (!completedAt) return 'Running...';
+    
+    const start = new Date(startedAt);
+    const end = new Date(completedAt);
+    const durationMs = end.getTime() - start.getTime();
+    const seconds = Math.round(durationMs / 1000);
+    
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  const renderSyncErrors = (errors: SyncError[]) => {
+    if (!errors || errors.length === 0) return null;
+
+    return (
+      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+        <h5 className="font-medium text-red-800 mb-2">Sync Errors ({errors.length})</h5>
+        <div className="space-y-1 max-h-40 overflow-y-auto">
+          {errors.map((error, index) => (
+            <div key={index} className="text-sm text-red-700">
+              <span className="font-medium">{error.sheet}</span> - Row {error.row}: {error.error}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Google Sheets Sync Dashboard</CardTitle>
+            <CardTitle>Enhanced Google Sheets Sync Dashboard</CardTitle>
             <div className="flex gap-2">
               <Button
                 onClick={fetchSyncLogs}
@@ -210,21 +267,38 @@ export const SyncDashboard = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
               <div>
-                <h4 className="font-medium mb-2">Current Configuration</h4>
+                <h4 className="font-medium mb-2">Enhanced Configuration</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• Automatic sync: Every 6 hours</li>
-                  <li>• Source: Google Sheets</li>
-                  <li>• Sheet ID: 1lZMQpzzIJpSeKefA8r2H6HbyNnBtTPVwhSqlm6pSOoU</li>
-                  <li>• Targets: Public Events & Tasks</li>
+                  <li>• Batch processing: 50 rows per batch</li>
+                  <li>• Retry mechanism: Up to 3 attempts</li>
+                  <li>• Data validation: Built-in validation</li>
+                  <li>• Concurrency protection: Prevents overlapping syncs</li>
+                  <li>• Source: Google Sheets (Sheet1: Events, Sheet2: Tasks)</li>
                 </ul>
               </div>
               <div>
-                <h4 className="font-medium mb-2">Sync Status</h4>
+                <h4 className="font-medium mb-2">Current Status</h4>
                 <div className="text-sm">
                   {syncLogs.length > 0 ? (
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(syncLogs[0].status)}
-                      <span>Last sync: {getStatusBadge(syncLogs[0].status)}</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(syncLogs[0].status)}
+                        <span>Last sync: {getStatusBadge(syncLogs[0].status)}</span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        Duration: {formatDuration(syncLogs[0].started_at, syncLogs[0].completed_at)}
+                      </div>
+                      {syncLogs[0].status === 'success' && (
+                        <div className="text-green-600 text-xs">
+                          Processed: {syncLogs[0].items_processed || 0} | 
+                          Created: {syncLogs[0].items_created || 0} | 
+                          Updated: {syncLogs[0].items_updated || 0}
+                          {syncLogs[0].metadata?.errors?.length > 0 && (
+                            <span className="text-orange-600"> | Errors: {syncLogs[0].metadata.errors.length}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <span className="text-muted-foreground">No sync history</span>
@@ -251,36 +325,80 @@ export const SyncDashboard = () => {
               <div className="space-y-3">
                 <h4 className="font-medium">Recent Sync History</h4>
                 {syncLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card"
-                  >
-                    <div className="flex items-center gap-3">
-                      {getStatusIcon(log.status)}
-                      <div>
-                        <div className="flex items-center gap-2 font-medium">
-                          {log.sync_type} - {getStatusBadge(log.status)}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Started: {format(new Date(log.started_at), 'MMM d, yyyy h:mm a')}
-                          {log.completed_at && ` • Completed: ${format(new Date(log.completed_at), 'h:mm a')}`}
-                        </div>
-                        {log.error_message && (
-                          <div className="text-sm text-red-600 mt-1 max-w-md truncate">
-                            Error: {log.error_message}
+                  <Collapsible key={log.id}>
+                    <div className="rounded-lg border bg-card">
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50">
+                          <div className="flex items-center gap-3">
+                            {getStatusIcon(log.status)}
+                            <div>
+                              <div className="flex items-center gap-2 font-medium">
+                                {log.sync_type.replace('_', ' ')} - {getStatusBadge(log.status)}
+                                {log.metadata?.errors?.length > 0 && (
+                                  <Badge variant="outline" className="bg-orange-100 text-orange-700">
+                                    {log.metadata.errors.length} errors
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                Started: {format(new Date(log.started_at), 'MMM d, yyyy h:mm a')}
+                                {log.completed_at && ` • Duration: ${formatDuration(log.started_at, log.completed_at)}`}
+                              </div>
+                              {log.error_message && (
+                                <div className="text-sm text-red-600 mt-1 max-w-md truncate">
+                                  Error: {log.error_message}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
+                          
+                          <div className="flex items-center gap-4">
+                            {log.status === 'success' && (
+                              <div className="text-right text-sm text-muted-foreground">
+                                <div>Processed: {log.items_processed || 0}</div>
+                                <div>Created: {log.items_created || 0}</div>
+                                <div>Updated: {log.items_updated || 0}</div>
+                              </div>
+                            )}
+                            {expandedLogs.has(log.id) ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </div>
+                        </div>
+                      </CollapsibleTrigger>
+                      
+                      <CollapsibleContent>
+                        <div className="px-4 pb-4 border-t">
+                          <div className="mt-3 space-y-3">
+                            {log.metadata && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <h5 className="font-medium mb-1">Configuration</h5>
+                                  <div className="text-muted-foreground space-y-1">
+                                    <div>Batch Size: {log.metadata.batch_size || 'N/A'}</div>
+                                    <div>Max Retries: {log.metadata.max_retries || 'N/A'}</div>
+                                    <div>Spreadsheet ID: {log.metadata.spreadsheet_id || 'N/A'}</div>
+                                  </div>
+                                </div>
+                                <div>
+                                  <h5 className="font-medium mb-1">Results</h5>
+                                  <div className="text-muted-foreground space-y-1">
+                                    <div>Items Processed: {log.items_processed || 0}</div>
+                                    <div>Items Created: {log.items_created || 0}</div>
+                                    <div>Items Updated: {log.items_updated || 0}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {log.metadata?.errors && renderSyncErrors(log.metadata.errors)}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
                     </div>
-                    
-                    {log.status === 'success' && (
-                      <div className="text-right text-sm text-muted-foreground">
-                        <div>Processed: {log.items_processed || 0}</div>
-                        <div>Created: {log.items_created || 0}</div>
-                        <div>Updated: {log.items_updated || 0}</div>
-                      </div>
-                    )}
-                  </div>
+                  </Collapsible>
                 ))}
               </div>
             )}
