@@ -1,36 +1,35 @@
-
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { PublicEvent } from '@/types/eventTypes';
+import { FormattedEvent } from '@/types/eventTypes';
+
+const apiBase = '';
 
 export const usePublicEvents = () => {
-  const [publicEvents, setPublicEvents] = useState<PublicEvent[]>([]);
+  const [events, setEvents] = useState<FormattedEvent[]>([]);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
-  const { toast } = useToast();
 
+  // Fetch public events from API
   const fetchPublicEvents = async () => {
-    if (!user) return;
-    
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('public_events')
-        .select('*')
-        .order('date', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching public events:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch public events",
-          variant: "destructive",
-        });
-      } else {
-        console.log('Fetched public events:', data);
-        setPublicEvents(data || []);
+      const response = await fetch(`${apiBase}/api/public-events`);
+      if (response.ok) {
+        const data = await response.json();
+        const formattedEvents: FormattedEvent[] = data.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          description: event.description,
+          date: event.date,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          isOnline: event.isOnline,
+          meetingLink: event.meetingLink,
+          location: event.location,
+          notes: event.notes,
+          createdAt: event.createdAt,
+          isPublic: true,
+          userId: event.userId
+        }));
+        setEvents(formattedEvents);
       }
     } catch (error) {
       console.error('Error fetching public events:', error);
@@ -39,112 +38,69 @@ export const usePublicEvents = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPublicEvents();
-  }, [user]);
-
-  const addPublicEvent = async (eventData: Omit<PublicEvent, 'id' | 'created_at' | 'user_id'>) => {
-    if (!user) return;
-
+  // Save new public event
+  const saveEvent = async (eventData: any) => {
     try {
-      console.log('Creating public event with user_id:', user.id);
-      const { data, error } = await supabase
-        .from('public_events')
-        .insert([{ ...eventData, user_id: user.id }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding public event:', error);
-        toast({
-          title: "Error",
-          description: "Failed to create public event",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Created public event:', data);
-      setPublicEvents(prev => [...prev, data]);
-      toast({
-        title: "Success",
-        description: "Public event created successfully",
+      const response = await fetch(`${apiBase}/api/public-events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData),
       });
+      
+      if (response.ok) {
+        fetchPublicEvents(); // Refresh events
+      }
     } catch (error) {
-      console.error('Error adding public event:', error);
+      console.error('Error saving public event:', error);
     }
   };
 
-  const updatePublicEvent = async (eventId: string, eventData: Partial<PublicEvent>) => {
-    if (!user) return;
-
+  // Update public event
+  const updateEvent = async (id: string, eventData: any) => {
     try {
-      // Allow update if user is the owner OR if user is admin (for sheet-synced events)
-      const { data, error } = await supabase
-        .from('public_events')
-        .update(eventData)
-        .eq('id', eventId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating public event:', error);
-        toast({
-          title: "Error",
-          description: "Failed to update public event",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setPublicEvents(prev => 
-        prev.map(event => event.id === eventId ? data : event)
-      );
-      toast({
-        title: "Success",
-        description: "Public event updated successfully",
+      const response = await fetch(`${apiBase}/api/public-events/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData),
       });
+      
+      if (response.ok) {
+        fetchPublicEvents(); // Refresh events
+      }
     } catch (error) {
       console.error('Error updating public event:', error);
     }
   };
 
-  const deletePublicEvent = async (eventId: string) => {
-    if (!user) return;
-
+  // Delete public event
+  const deleteEvent = async (id: string) => {
     try {
-      // Allow delete if user is the owner OR if user is admin (for sheet-synced events)
-      const { error } = await supabase
-        .from('public_events')
-        .delete()
-        .eq('id', eventId);
-
-      if (error) {
-        console.error('Error deleting public event:', error);
-        toast({
-          title: "Error",
-          description: "Failed to delete public event",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setPublicEvents(prev => prev.filter(event => event.id !== eventId));
-      toast({
-        title: "Success",
-        description: "Public event deleted successfully",
+      const response = await fetch(`${apiBase}/api/public-events/${id}`, {
+        method: 'DELETE',
       });
+      
+      if (response.ok) {
+        fetchPublicEvents(); // Refresh events
+      }
     } catch (error) {
       console.error('Error deleting public event:', error);
     }
   };
 
+  useEffect(() => {
+    fetchPublicEvents();
+  }, []);
+
   return {
-    publicEvents,
+    events,
     loading,
-    addPublicEvent,
-    updatePublicEvent,
-    deletePublicEvent,
+    saveEvent,
+    updateEvent,
+    deleteEvent,
     refetch: fetchPublicEvents,
   };
 };

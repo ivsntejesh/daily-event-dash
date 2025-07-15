@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormattedEvent } from '@/types/eventTypes';
-import { useSupabaseEvents } from '@/hooks/useSupabaseEvents';
+
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { EventVisibilitySelector } from './EventVisibilitySelector';
@@ -31,7 +31,7 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
 
   const [isPublicEvent, setIsPublicEvent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { updateEvent } = useSupabaseEvents();
+  // Direct API calls for event operations
   const { user } = useAuth();
   const { toast } = useToast();
 

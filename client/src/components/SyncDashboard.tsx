@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +36,7 @@ export const SyncDashboard = () => {
   const { toast } = useToast();
 
   const fetchSyncLogs = async () => {
-    if (!isAdmin()) {
+    if (!isAdmin) {
       console.log('User is not admin, skipping sync logs fetch');
       return;
     }
@@ -45,18 +44,14 @@ export const SyncDashboard = () => {
     setLoading(true);
     try {
       console.log('Fetching sync logs...');
-      const { data, error } = await supabase
-        .from('sync_log')
-        .select('*')
-        .order('started_at', { ascending: false })
-        .limit(20); // Increased limit to show more history
-
-      if (error) {
-        console.error('Supabase error fetching sync logs:', error);
-        throw error;
+      const response = await fetch('/api/sync-logs');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch sync logs');
       }
       
-      console.log('Successfully fetched sync logs:', data?.length || 0, 'records');
+      const data = await response.json();
+      console.log('Successfully fetched sync logs:', data.length, 'records');
       setSyncLogs(data || []);
     } catch (error) {
       console.error('Error fetching sync logs:', error);
@@ -73,41 +68,33 @@ export const SyncDashboard = () => {
   const triggerManualSync = async () => {
     setSyncing(true);
     try {
-      console.log('Triggering manual sync...');
-      
-      const { data, error } = await supabase.functions.invoke('sheets-sync', {
-        body: { manual: true }
+      const response = await fetch('/api/sync-sheets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-
-      if (error) {
-        console.error('Manual sync error:', error);
-        throw error;
-      }
-
-      console.log('Manual sync response:', data);
       
-      if (data?.skipped) {
-        toast({
-          title: "Sync Skipped",
-          description: "Another sync operation is already in progress. Please wait for it to complete.",
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: `Manual sync completed. Processed: ${data?.items_processed || 0}, Created: ${data?.items_created || 0}, Updated: ${data?.items_updated || 0}${data?.errors_count ? `, Errors: ${data.errors_count}` : ''}`,
-        });
+      if (!response.ok) {
+        throw new Error('Failed to trigger sync');
       }
-
-      // Refresh logs after sync completes
+      
+      const data = await response.json();
+      
+      toast({
+        title: "Sync Started",
+        description: "Google Sheets synchronization has been triggered.",
+      });
+      
+      // Refresh logs after a short delay
       setTimeout(() => {
         fetchSyncLogs();
       }, 2000);
     } catch (error) {
-      console.error('Error triggering manual sync:', error);
+      console.error('Error triggering sync:', error);
       toast({
         title: "Error",
-        description: `Failed to trigger manual sync: ${error.message || 'Unknown error'}`,
+        description: "Failed to trigger sync. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -115,290 +102,247 @@ export const SyncDashboard = () => {
     }
   };
 
-  const setupAutomaticSync = async () => {
+  const setupCron = async () => {
     try {
-      console.log('Setting up automatic sync...');
+      const response = await fetch('/api/setup-cron', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       
-      const { data, error } = await supabase.functions.invoke('setup-cron');
-
-      if (error) {
-        console.error('Setup cron error:', error);
-        throw error;
+      if (!response.ok) {
+        throw new Error('Failed to setup cron');
       }
-
-      console.log('Cron setup response:', data);
       
       toast({
         title: "Success",
-        description: "Automatic sync has been configured to run every 6 hours.",
+        description: "Automated sync has been configured.",
       });
     } catch (error) {
-      console.error('Error setting up automatic sync:', error);
+      console.error('Error setting up cron:', error);
       toast({
         title: "Error",
-        description: `Failed to setup automatic sync: ${error.message || 'Unknown error'}`,
+        description: "Failed to setup automated sync. Please try again.",
         variant: "destructive",
       });
     }
   };
 
   const toggleLogExpansion = (logId: string) => {
-    const newExpanded = new Set(expandedLogs);
-    if (newExpanded.has(logId)) {
-      newExpanded.delete(logId);
-    } else {
-      newExpanded.add(logId);
-    }
-    setExpandedLogs(newExpanded);
+    setExpandedLogs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(logId)) {
+        newSet.delete(logId);
+      } else {
+        newSet.add(logId);
+      }
+      return newSet;
+    });
   };
 
-  // Only fetch logs when component mounts and user is admin
-  useEffect(() => {
-    if (isAdmin()) {
-      fetchSyncLogs();
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'PPpp');
+    } catch (error) {
+      return dateString;
     }
-  }, [isAdmin()]);
-
-  if (!isAdmin()) {
-    return (
-      <Card>
-        <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground">Admin access required to view sync dashboard</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />;
       case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
+        return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'success':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'failed':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      case 'skipped':
+        return <AlertCircle className="w-4 h-4 text-gray-500" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />;
+        return <Clock className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      success: 'default',
-      failed: 'destructive',
-      pending: 'secondary',
-      skipped: 'outline'
-    } as const;
-
-    return (
-      <Badge variant={variants[status as keyof typeof variants] || 'outline'}>
-        {status}
-      </Badge>
-    );
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'success':
+        return 'bg-green-100 text-green-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      case 'skipped':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
-  const formatDuration = (startedAt: string, completedAt: string | null) => {
-    if (!completedAt) return 'Running...';
+  const parseErrorMessages = (metadata: any): SyncError[] => {
+    if (!metadata || !metadata.errors) return [];
     
-    const start = new Date(startedAt);
-    const end = new Date(completedAt);
-    const durationMs = end.getTime() - start.getTime();
-    const seconds = Math.round(durationMs / 1000);
-    
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
+    try {
+      return metadata.errors.map((error: any) => ({
+        sheet: error.sheet || 'Unknown',
+        row: error.row || 0,
+        error: error.message || error.error || 'Unknown error'
+      }));
+    } catch (error) {
+      console.error('Error parsing error messages:', error);
+      return [];
+    }
   };
 
-  const renderSyncErrors = (errors: SyncError[]) => {
-    if (!errors || errors.length === 0) return null;
+  useEffect(() => {
+    fetchSyncLogs();
+  }, [isAdmin]);
 
+  if (!isAdmin) {
     return (
-      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
-        <h5 className="font-medium text-red-800 mb-2">Sync Errors ({errors.length})</h5>
-        <div className="space-y-1 max-h-40 overflow-y-auto">
-          {errors.map((error, index) => (
-            <div key={index} className="text-sm text-red-700">
-              <span className="font-medium">{error.sheet}</span> - Row {error.row}: {error.error}
-            </div>
-          ))}
-        </div>
+      <div className="max-w-4xl mx-auto p-6">
+        <Card>
+          <CardContent className="p-8">
+            <p className="text-center text-gray-500">
+              You need admin privileges to access the sync dashboard.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
-  };
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl mx-auto p-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Enhanced Google Sheets Sync Dashboard</CardTitle>
-            <div className="flex gap-2">
-              <Button
-                onClick={fetchSyncLogs}
-                disabled={loading}
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button
-                onClick={setupAutomaticSync}
-                variant="outline"
-                size="sm"
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Setup Auto Sync
-              </Button>
-              <Button
-                onClick={triggerManualSync}
-                disabled={syncing}
-                size="sm"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                Manual Sync
-              </Button>
-            </div>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            Google Sheets Sync Dashboard
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          <div className="flex flex-wrap gap-4">
+            <Button
+              onClick={triggerManualSync}
+              disabled={syncing}
+              className="flex items-center gap-2"
+            >
+              <Play className="w-4 h-4" />
+              {syncing ? 'Syncing...' : 'Trigger Manual Sync'}
+            </Button>
+            <Button
+              onClick={setupCron}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Clock className="w-4 h-4" />
+              Setup Automated Sync
+            </Button>
+            <Button
+              onClick={fetchSyncLogs}
+              variant="outline"
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh Logs
+            </Button>
+          </div>
+
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-              <div>
-                <h4 className="font-medium mb-2">Enhanced Configuration</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Automatic sync: Every 6 hours</li>
-                  <li>• Batch processing: 50 rows per batch</li>
-                  <li>• Retry mechanism: Up to 3 attempts</li>
-                  <li>• Data validation: Built-in validation</li>
-                  <li>• Concurrency protection: Prevents overlapping syncs</li>
-                  <li>• Source: Google Sheets (Sheet1: Events, Sheet2: Tasks)</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Current Status</h4>
-                <div className="text-sm">
-                  {syncLogs.length > 0 ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(syncLogs[0].status)}
-                        <span>Last sync: {getStatusBadge(syncLogs[0].status)}</span>
-                      </div>
-                      <div className="text-muted-foreground">
-                        Duration: {formatDuration(syncLogs[0].started_at, syncLogs[0].completed_at)}
-                      </div>
-                      {syncLogs[0].status === 'success' && (
-                        <div className="text-green-600 text-xs">
-                          Processed: {syncLogs[0].items_processed || 0} | 
-                          Created: {syncLogs[0].items_created || 0} | 
-                          Updated: {syncLogs[0].items_updated || 0}
-                          {syncLogs[0].metadata?.errors?.length > 0 && (
-                            <span className="text-orange-600"> | Errors: {syncLogs[0].metadata.errors.length}</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">No sync history</span>
-                  )}
-                </div>
-              </div>
-            </div>
+            <h3 className="text-lg font-semibold">Sync History</h3>
             
             {loading ? (
-              <div className="text-center py-4">
-                <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Loading sync logs...</p>
+              <div className="flex items-center justify-center p-8">
+                <RefreshCw className="w-6 h-6 animate-spin" />
+                <span className="ml-2">Loading sync logs...</span>
               </div>
             ) : syncLogs.length === 0 ? (
-              <div className="text-center py-8">
-                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">No sync logs found</p>
-                <Button onClick={triggerManualSync} disabled={syncing}>
-                  <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                  Run First Sync
-                </Button>
+              <div className="text-center text-gray-500 p-8">
+                No sync logs found. Try triggering a sync to see the history.
               </div>
             ) : (
               <div className="space-y-3">
-                <h4 className="font-medium">Recent Sync History</h4>
                 {syncLogs.map((log) => (
-                  <Collapsible key={log.id}>
-                    <div className="rounded-lg border bg-card">
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50">
-                          <div className="flex items-center gap-3">
-                            {getStatusIcon(log.status)}
-                            <div>
-                              <div className="flex items-center gap-2 font-medium">
-                                {log.sync_type.replace('_', ' ')} - {getStatusBadge(log.status)}
-                                {log.metadata?.errors?.length > 0 && (
-                                  <Badge variant="outline" className="bg-orange-100 text-orange-700">
-                                    {log.metadata.errors.length} errors
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                Started: {format(new Date(log.started_at), 'MMM d, yyyy h:mm a')}
-                                {log.completed_at && ` • Duration: ${formatDuration(log.started_at, log.completed_at)}`}
-                              </div>
-                              {log.error_message && (
-                                <div className="text-sm text-red-600 mt-1 max-w-md truncate">
-                                  Error: {log.error_message}
+                  <Card key={log.id} className="border-l-4 border-l-gray-200">
+                    <CardContent className="p-4">
+                      <Collapsible>
+                        <CollapsibleTrigger 
+                          onClick={() => toggleLogExpansion(log.id)}
+                          className="w-full"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {getStatusIcon(log.status)}
+                              <div className="text-left">
+                                <div className="font-medium">{log.sync_type}</div>
+                                <div className="text-sm text-gray-500">
+                                  {formatDate(log.started_at)}
                                 </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={getStatusColor(log.status)}>
+                                {log.status}
+                              </Badge>
+                              {expandedLogs.has(log.id) ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
                               )}
                             </div>
                           </div>
-                          
-                          <div className="flex items-center gap-4">
-                            {log.status === 'success' && (
-                              <div className="text-right text-sm text-muted-foreground">
-                                <div>Processed: {log.items_processed || 0}</div>
-                                <div>Created: {log.items_created || 0}</div>
-                                <div>Updated: {log.items_updated || 0}</div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-4">
+                          <div className="space-y-3 text-sm">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <span className="font-medium">Items Processed:</span>
+                                <span className="ml-2">{log.items_processed || 0}</span>
                               </div>
-                            )}
-                            {expandedLogs.has(log.id) ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </div>
-                        </div>
-                      </CollapsibleTrigger>
-                      
-                      <CollapsibleContent>
-                        <div className="px-4 pb-4 border-t">
-                          <div className="mt-3 space-y-3">
-                            {log.metadata && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                  <h5 className="font-medium mb-1">Configuration</h5>
-                                  <div className="text-muted-foreground space-y-1">
-                                    <div>Batch Size: {log.metadata.batch_size || 'N/A'}</div>
-                                    <div>Max Retries: {log.metadata.max_retries || 'N/A'}</div>
-                                    <div>Spreadsheet ID: {log.metadata.spreadsheet_id || 'N/A'}</div>
-                                  </div>
-                                </div>
-                                <div>
-                                  <h5 className="font-medium mb-1">Results</h5>
-                                  <div className="text-muted-foreground space-y-1">
-                                    <div>Items Processed: {log.items_processed || 0}</div>
-                                    <div>Items Created: {log.items_created || 0}</div>
-                                    <div>Items Updated: {log.items_updated || 0}</div>
-                                  </div>
-                                </div>
+                              <div>
+                                <span className="font-medium">Items Created:</span>
+                                <span className="ml-2">{log.items_created || 0}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium">Items Updated:</span>
+                                <span className="ml-2">{log.items_updated || 0}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium">Completed:</span>
+                                <span className="ml-2">
+                                  {log.completed_at ? formatDate(log.completed_at) : 'In Progress'}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {log.error_message && (
+                              <div className="bg-red-50 p-3 rounded-md">
+                                <span className="font-medium text-red-800">Error:</span>
+                                <p className="text-red-700 mt-1">{log.error_message}</p>
                               </div>
                             )}
                             
-                            {log.metadata?.errors && renderSyncErrors(log.metadata.errors)}
+                            {log.metadata && parseErrorMessages(log.metadata).length > 0 && (
+                              <div className="bg-yellow-50 p-3 rounded-md">
+                                <span className="font-medium text-yellow-800">Detailed Errors:</span>
+                                <div className="mt-2 space-y-1">
+                                  {parseErrorMessages(log.metadata).map((error, index) => (
+                                    <div key={index} className="text-yellow-700 text-xs">
+                                      <span className="font-medium">{error.sheet}</span>
+                                      {error.row > 0 && <span> (Row {error.row})</span>}
+                                      : {error.error}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}

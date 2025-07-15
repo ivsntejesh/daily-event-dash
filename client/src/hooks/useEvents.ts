@@ -1,83 +1,109 @@
-
-import { useSupabaseEvents } from './useSupabaseEvents';
-import { usePublicEvents } from './usePublicEvents';
-import { useUserRole } from './useUserRole';
-import { combineAndSortEvents } from '@/utils/eventUtils';
+import { useState, useEffect } from 'react';
 import { FormattedEvent } from '@/types/eventTypes';
 
+const apiBase = '';
+
 export const useEvents = () => {
-  const { 
-    events: privateEvents, 
-    addEvent: addPrivateEvent, 
-    loading: privateLoading 
-  } = useSupabaseEvents();
-  
-  const { 
-    publicEvents, 
-    addPublicEvent,
-    updatePublicEvent,
-    deletePublicEvent,
-    loading: publicLoading 
-  } = usePublicEvents();
+  const [events, setEvents] = useState<FormattedEvent[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const { isAdmin } = useUserRole();
-
-  const allEvents: FormattedEvent[] = combineAndSortEvents(privateEvents, publicEvents);
-  
-  const handleSaveEvent = (eventData: any, isPublic: boolean) => {
-    const supabaseEventData = {
-      title: eventData.title,
-      description: eventData.description,
-      date: eventData.date,
-      start_time: eventData.startTime,
-      end_time: eventData.endTime,
-      is_online: eventData.isOnline,
-      meeting_link: eventData.meetingLink,
-      location: eventData.location,
-      notes: eventData.notes,
-    };
-
-    if (isPublic) {
-      addPublicEvent(supabaseEventData);
-    } else {
-      addPrivateEvent(supabaseEventData);
+  // Fetch events from API
+  const fetchEvents = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${apiBase}/api/events`);
+      if (response.ok) {
+        const data = await response.json();
+        const formattedEvents: FormattedEvent[] = data.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          description: event.description,
+          date: event.date,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          isOnline: event.isOnline,
+          meetingLink: event.meetingLink,
+          location: event.location,
+          notes: event.notes,
+          createdAt: event.createdAt,
+          isPublic: false,
+          userId: event.userId
+        }));
+        setEvents(formattedEvents);
+      }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdateEvent = async (eventId: string, eventData: any, isPublic: boolean) => {
-    const supabaseEventData = {
-      title: eventData.title,
-      description: eventData.description,
-      date: eventData.date,
-      start_time: eventData.startTime,
-      end_time: eventData.endTime,
-      is_online: eventData.isOnline,
-      meeting_link: eventData.meetingLink,
-      location: eventData.location,
-      notes: eventData.notes,
-    };
-
-    if (isPublic) {
-      // Extract the actual event ID for public events (remove 'public-' prefix)
-      const actualId = eventId.startsWith('public-') ? eventId.replace('public-', '') : eventId;
-      await updatePublicEvent(actualId, supabaseEventData);
+  // Save new event
+  const saveEvent = async (eventData: any, isPublic: boolean) => {
+    try {
+      const endpoint = isPublic ? '/api/public-events' : '/api/events';
+      const response = await fetch(`${apiBase}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData),
+      });
+      
+      if (response.ok) {
+        fetchEvents(); // Refresh events
+      }
+    } catch (error) {
+      console.error('Error saving event:', error);
     }
   };
 
-  const handleDeleteEvent = async (eventId: string, isPublic: boolean) => {
-    if (isPublic) {
-      // Extract the actual event ID for public events (remove 'public-' prefix)
-      const actualId = eventId.startsWith('public-') ? eventId.replace('public-', '') : eventId;
-      await deletePublicEvent(actualId);
+  // Update event
+  const updateEvent = async (id: string, eventData: any, isPublic: boolean) => {
+    try {
+      const endpoint = isPublic ? '/api/public-events' : '/api/events';
+      const response = await fetch(`${apiBase}${endpoint}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData),
+      });
+      
+      if (response.ok) {
+        fetchEvents(); // Refresh events
+      }
+    } catch (error) {
+      console.error('Error updating event:', error);
     }
   };
+
+  // Delete event
+  const deleteEvent = async (id: string, isPublic: boolean) => {
+    try {
+      const endpoint = isPublic ? '/api/public-events' : '/api/events';
+      const response = await fetch(`${apiBase}${endpoint}/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        fetchEvents(); // Refresh events
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   return {
-    events: allEvents,
-    loading: privateLoading || publicLoading,
-    saveEvent: handleSaveEvent,
-    updateEvent: handleUpdateEvent,
-    deleteEvent: handleDeleteEvent,
-    isAdmin,
+    events,
+    loading,
+    saveEvent,
+    updateEvent,
+    deleteEvent,
+    refetch: fetchEvents,
   };
 };

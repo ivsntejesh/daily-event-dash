@@ -1,24 +1,34 @@
-
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { PublicTask } from '@/types/taskTypes';
+import { FormattedTask } from '@/types/taskTypes';
+
+const apiBase = '';
 
 export const usePublicTasksAnonymous = () => {
-  const [publicTasks, setPublicTasks] = useState<PublicTask[]>([]);
+  const [tasks, setTasks] = useState<FormattedTask[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Fetch public tasks from API
   const fetchPublicTasks = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('public_tasks')
-        .select('*')
-        .order('date', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching public tasks:', error);
-      } else {
-        setPublicTasks(data || []);
+      const response = await fetch(`${apiBase}/api/public-tasks`);
+      if (response.ok) {
+        const data = await response.json();
+        const formattedTasks: FormattedTask[] = data.map((task: any) => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          date: task.date,
+          startTime: task.startTime,
+          endTime: task.endTime,
+          isCompleted: task.isCompleted,
+          priority: task.priority,
+          notes: task.notes,
+          createdAt: task.createdAt,
+          isPublic: true,
+          userId: task.userId
+        }));
+        setTasks(formattedTasks);
       }
     } catch (error) {
       console.error('Error fetching public tasks:', error);
@@ -32,7 +42,7 @@ export const usePublicTasksAnonymous = () => {
   }, []);
 
   return {
-    publicTasks,
+    tasks,
     loading,
     refetch: fetchPublicTasks,
   };

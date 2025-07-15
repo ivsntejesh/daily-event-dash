@@ -1,36 +1,34 @@
-
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { PublicTask } from '@/types/taskTypes';
+import { FormattedTask } from '@/types/taskTypes';
+
+const apiBase = '';
 
 export const usePublicTasks = () => {
-  const [publicTasks, setPublicTasks] = useState<PublicTask[]>([]);
+  const [tasks, setTasks] = useState<FormattedTask[]>([]);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
-  const { toast } = useToast();
 
+  // Fetch public tasks from API
   const fetchPublicTasks = async () => {
-    if (!user) return;
-    
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('public_tasks')
-        .select('*')
-        .order('date', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching public tasks:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch public tasks",
-          variant: "destructive",
-        });
-      } else {
-        console.log('Fetched public tasks:', data);
-        setPublicTasks(data || []);
+      const response = await fetch(`${apiBase}/api/public-tasks`);
+      if (response.ok) {
+        const data = await response.json();
+        const formattedTasks: FormattedTask[] = data.map((task: any) => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          date: task.date,
+          startTime: task.startTime,
+          endTime: task.endTime,
+          isCompleted: task.isCompleted,
+          priority: task.priority,
+          notes: task.notes,
+          createdAt: task.createdAt,
+          isPublic: true,
+          userId: task.userId
+        }));
+        setTasks(formattedTasks);
       }
     } catch (error) {
       console.error('Error fetching public tasks:', error);
@@ -39,117 +37,89 @@ export const usePublicTasks = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPublicTasks();
-  }, [user]);
-
-  const addPublicTask = async (taskData: Omit<PublicTask, 'id' | 'created_at' | 'user_id'>) => {
-    if (!user) return;
-
+  // Save new public task
+  const saveTask = async (taskData: any) => {
     try {
-      console.log('Creating public task with user_id:', user.id);
-      const { data, error } = await supabase
-        .from('public_tasks')
-        .insert([{ ...taskData, user_id: user.id }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding public task:', error);
-        toast({
-          title: "Error",
-          description: "Failed to create public task",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Created public task:', data);
-      setPublicTasks(prev => [...prev, data]);
-      toast({
-        title: "Success",
-        description: "Public task created successfully",
+      const response = await fetch(`${apiBase}/api/public-tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
       });
+      
+      if (response.ok) {
+        fetchPublicTasks(); // Refresh tasks
+      }
     } catch (error) {
-      console.error('Error adding public task:', error);
+      console.error('Error saving public task:', error);
     }
   };
 
-  const updatePublicTask = async (taskId: string, taskData: Partial<PublicTask>) => {
-    if (!user) return;
-
+  // Update public task
+  const updateTask = async (id: string, taskData: any) => {
     try {
-      // Allow update if user is the owner OR if user is admin (for sheet-synced tasks)
-      const { data, error } = await supabase
-        .from('public_tasks')
-        .update(taskData)
-        .eq('id', taskId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating public task:', error);
-        toast({
-          title: "Error",
-          description: "Failed to update public task",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setPublicTasks(prev => 
-        prev.map(task => task.id === taskId ? data : task)
-      );
-      toast({
-        title: "Success",
-        description: "Public task updated successfully",
+      const response = await fetch(`${apiBase}/api/public-tasks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
       });
+      
+      if (response.ok) {
+        fetchPublicTasks(); // Refresh tasks
+      }
     } catch (error) {
       console.error('Error updating public task:', error);
     }
   };
 
-  const deletePublicTask = async (taskId: string) => {
-    if (!user) return;
-
+  // Delete public task
+  const deleteTask = async (id: string) => {
     try {
-      // Allow delete if user is the owner OR if user is admin (for sheet-synced tasks)
-      const { error } = await supabase
-        .from('public_tasks')
-        .delete()
-        .eq('id', taskId);
-
-      if (error) {
-        console.error('Error deleting public task:', error);
-        toast({
-          title: "Error",
-          description: "Failed to delete public task",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setPublicTasks(prev => prev.filter(task => task.id !== taskId));
-      toast({
-        title: "Success",
-        description: "Public task deleted successfully",
+      const response = await fetch(`${apiBase}/api/public-tasks/${id}`, {
+        method: 'DELETE',
       });
+      
+      if (response.ok) {
+        fetchPublicTasks(); // Refresh tasks
+      }
     } catch (error) {
       console.error('Error deleting public task:', error);
     }
   };
 
-  const togglePublicTaskCompletion = async (taskId: string, isCompleted: boolean) => {
-    await updatePublicTask(taskId, { is_completed: isCompleted });
+  // Toggle task completion
+  const toggleTaskCompletion = async (id: string, isCompleted: boolean) => {
+    try {
+      const response = await fetch(`${apiBase}/api/public-tasks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isCompleted }),
+      });
+      
+      if (response.ok) {
+        fetchPublicTasks(); // Refresh tasks
+      }
+    } catch (error) {
+      console.error('Error toggling task completion:', error);
+    }
   };
 
+  useEffect(() => {
+    fetchPublicTasks();
+  }, []);
+
   return {
-    publicTasks,
+    tasks,
     loading,
-    addPublicTask,
-    updatePublicTask,
-    deletePublicTask,
-    togglePublicTaskCompletion,
+    saveTask,
+    updateTask,
+    deleteTask,
+    toggleTaskCompletion,
     refetch: fetchPublicTasks,
   };
 };
