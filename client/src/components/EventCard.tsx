@@ -54,8 +54,8 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false, showDa
   const canEdit = user && (
     (!isPublic) || // Private events can be edited by owner (handled by RLS)
     (isPublic && event.userId === user.id) || // Public events can be edited by creator
-    (isPublic && event.userId === null && isAdmin()) || // Admins can edit sheet-synced events (user_id is null)
-    (isPublic && isAdmin()) // Admins can edit any public event
+    (isPublic && event.userId === null && isAdmin) || // Admins can edit sheet-synced events (user_id is null)
+    (isPublic && isAdmin) // Admins can edit any public event
   );
 
   console.log('EventCard debug:', {

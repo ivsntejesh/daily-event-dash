@@ -30,7 +30,7 @@ async function syncGoogleSheets(syncLogId: string) {
     // Sync data from Google Sheets (treating as tasks based on your sheet structure)
     try {
       console.log(`Fetching data from sheet ID: ${EVENTS_SHEET_ID}`);
-      const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${EVENTS_SHEET_ID}/values/Sheet1!A:J?key=${API_KEY}`;
+      const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${EVENTS_SHEET_ID}/values/Sheet1!A1:D20?key=${API_KEY}`;
       console.log(`Data URL: ${dataUrl}`);
       const dataResponse = await fetch(dataUrl);
       
@@ -48,27 +48,58 @@ async function syncGoogleSheets(syncLogId: string) {
           console.log(`Processing row ${i + 1}:`, row);
           if (row.length >= 2 && row[0] && row[1]) { // Must have title and date
             try {
-              // Your sheet structure: Submission, Date, Start Time, End Time, Status, Remarks
-              const taskData = {
-                title: row[0] || "Untitled Task",
-                description: row[5] || "", // Remarks column
-                date: row[1] || new Date().toISOString().split('T')[0],
-                startTime: row[2] && row[2].trim() ? row[2] : null,
-                endTime: row[3] && row[3].trim() ? row[3] : null,
-                isCompleted: (row[4] || "").toLowerCase() === 'completed',
-                priority: "medium",
-                notes: row[5] || "",
-                userId: 1 // Default user for sync
-              };
+              // New sheet structure: Title, Date, Time (either single time or range)
+              const title = row[0] || "Untitled";
+              const date = row[1] || new Date().toISOString().split('T')[0];
+              const timeField = row[2] || "";
+              const notes = row[3] || "";
               
-              console.log(`Creating task:`, taskData);
-              await storage.createPublicTask(taskData);
-              itemsCreated++;
-              itemsProcessed++;
+              // Check if time field contains a range (e.g., "7:00 PM - 8:30 PM")
+              const isTimeRange = timeField.includes(' - ');
+              
+              if (isTimeRange) {
+                // Create as Event
+                const [startTime, endTime] = timeField.split(' - ').map(t => t.trim());
+                const eventData = {
+                  title,
+                  description: notes,
+                  date,
+                  startTime,
+                  endTime,
+                  isOnline: false,
+                  meetingLink: "",
+                  location: "",
+                  notes,
+                  userId: 1
+                };
+                
+                console.log(`Creating event:`, eventData);
+                await storage.createEvent(eventData);
+                itemsCreated++;
+                itemsProcessed++;
+              } else {
+                // Create as Task
+                const taskData = {
+                  title,
+                  description: notes,
+                  date,
+                  startTime: timeField && timeField.trim() ? timeField : null,
+                  endTime: null,
+                  isCompleted: false,
+                  priority: "medium",
+                  notes,
+                  userId: 1
+                };
+                
+                console.log(`Creating task:`, taskData);
+                await storage.createTask(taskData);
+                itemsCreated++;
+                itemsProcessed++;
+              }
             } catch (error) {
-              console.error(`Error creating task from row ${i + 1}:`, error);
+              console.error(`Error creating item from row ${i + 1}:`, error);
               errors.push({
-                sheet: "Tasks",
+                sheet: "Sheet1",
                 row: i + 1,
                 error: error instanceof Error ? error.message : "Unknown error"
               });
