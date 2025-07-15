@@ -29,17 +29,24 @@ async function syncGoogleSheets(syncLogId: string) {
     
     // Sync Events from Google Sheets
     try {
-      const eventsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${EVENTS_SHEET_ID}/values/Events!A:L?key=${API_KEY}`;
+      console.log(`Fetching events from sheet ID: ${EVENTS_SHEET_ID}`);
+      const eventsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${EVENTS_SHEET_ID}/values/Sheet1!A:L?key=${API_KEY}`;
+      console.log(`Events URL: ${eventsUrl}`);
       const eventsResponse = await fetch(eventsUrl);
+      
+      console.log(`Events response status: ${eventsResponse.status}`);
       
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json();
+        console.log(`Events data:`, eventsData);
         const rows = eventsData.values || [];
+        console.log(`Found ${rows.length} rows in events sheet`);
         
         // Skip header row
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
-          if (row.length >= 6) { // Minimum required columns
+          console.log(`Processing event row ${i + 1}:`, row);
+          if (row.length >= 3) { // Minimum required columns (title, description, date)
             try {
               const eventData = {
                 title: row[0] || "Untitled Event",
@@ -54,10 +61,12 @@ async function syncGoogleSheets(syncLogId: string) {
                 userId: 1 // Default user for sync
               };
               
+              console.log(`Creating event:`, eventData);
               await storage.createPublicEvent(eventData);
               itemsCreated++;
               itemsProcessed++;
             } catch (error) {
+              console.error(`Error creating event from row ${i + 1}:`, error);
               errors.push({
                 sheet: "Events",
                 row: i + 1,
@@ -66,8 +75,13 @@ async function syncGoogleSheets(syncLogId: string) {
             }
           }
         }
+      } else {
+        const errorText = await eventsResponse.text();
+        console.error(`Failed to fetch events. Status: ${eventsResponse.status}, Response: ${errorText}`);
+        throw new Error(`HTTP ${eventsResponse.status}: ${errorText}`);
       }
     } catch (error) {
+      console.error(`Error in events sync:`, error);
       errors.push({
         sheet: "Events",
         row: 0,
@@ -75,19 +89,26 @@ async function syncGoogleSheets(syncLogId: string) {
       });
     }
 
-    // Sync Tasks from Google Sheets
+    // Sync Tasks from Google Sheets  
     try {
-      const tasksUrl = `https://sheets.googleapis.com/v4/spreadsheets/${TASKS_SHEET_ID}/values/Tasks!A:J?key=${API_KEY}`;
+      console.log(`Fetching tasks from sheet ID: ${TASKS_SHEET_ID}`);
+      const tasksUrl = `https://sheets.googleapis.com/v4/spreadsheets/${TASKS_SHEET_ID}/values/Sheet1!A:J?key=${API_KEY}`;
+      console.log(`Tasks URL: ${tasksUrl}`);
       const tasksResponse = await fetch(tasksUrl);
+      
+      console.log(`Tasks response status: ${tasksResponse.status}`);
       
       if (tasksResponse.ok) {
         const tasksData = await tasksResponse.json();
+        console.log(`Tasks data:`, tasksData);
         const rows = tasksData.values || [];
+        console.log(`Found ${rows.length} rows in tasks sheet`);
         
         // Skip header row
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
-          if (row.length >= 4) { // Minimum required columns
+          console.log(`Processing task row ${i + 1}:`, row);
+          if (row.length >= 3) { // Minimum required columns (title, description, date)
             try {
               const taskData = {
                 title: row[0] || "Untitled Task",
@@ -101,10 +122,12 @@ async function syncGoogleSheets(syncLogId: string) {
                 userId: 1 // Default user for sync
               };
               
+              console.log(`Creating task:`, taskData);
               await storage.createPublicTask(taskData);
               itemsCreated++;
               itemsProcessed++;
             } catch (error) {
+              console.error(`Error creating task from row ${i + 1}:`, error);
               errors.push({
                 sheet: "Tasks",
                 row: i + 1,
@@ -113,8 +136,13 @@ async function syncGoogleSheets(syncLogId: string) {
             }
           }
         }
+      } else {
+        const errorText = await tasksResponse.text();
+        console.error(`Failed to fetch tasks. Status: ${tasksResponse.status}, Response: ${errorText}`);
+        throw new Error(`HTTP ${tasksResponse.status}: ${errorText}`);
       }
     } catch (error) {
+      console.error(`Error in tasks sync:`, error);
       errors.push({
         sheet: "Tasks",
         row: 0,
