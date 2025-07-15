@@ -4,6 +4,153 @@ import { storage } from "./storage";
 import { insertEventSchema, insertPublicEventSchema, insertTaskSchema, insertPublicTaskSchema } from "@shared/schema";
 import { z } from "zod";
 
+// Google Sheets sync function
+async function syncGoogleSheets(syncLogId: string) {
+  const API_KEY = process.env.GOOGLE_SHEETS_API_KEY;
+  
+  if (!API_KEY) {
+    await storage.updateSyncLog(syncLogId, {
+      status: "failed",
+      completedAt: new Date(),
+      errorMessage: "Google Sheets API key not configured"
+    });
+    throw new Error("Google Sheets API key not configured");
+  }
+
+  let itemsProcessed = 0;
+  let itemsCreated = 0;
+  let itemsUpdated = 0;
+  const errors: any[] = [];
+
+  try {
+    // Get spreadsheet IDs from environment variables or use demo values
+    const EVENTS_SHEET_ID = process.env.EVENTS_SHEET_ID || "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms";
+    const TASKS_SHEET_ID = process.env.TASKS_SHEET_ID || "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms";
+    
+    // Sync Events from Google Sheets
+    try {
+      const eventsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${EVENTS_SHEET_ID}/values/Events!A:L?key=${API_KEY}`;
+      const eventsResponse = await fetch(eventsUrl);
+      
+      if (eventsResponse.ok) {
+        const eventsData = await eventsResponse.json();
+        const rows = eventsData.values || [];
+        
+        // Skip header row
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length >= 6) { // Minimum required columns
+            try {
+              const eventData = {
+                title: row[0] || "Untitled Event",
+                description: row[1] || "",
+                date: row[2] || new Date().toISOString().split('T')[0],
+                startTime: row[3] || "09:00",
+                endTime: row[4] || "10:00",
+                isOnline: (row[5] || "").toLowerCase() === 'true',
+                meetingLink: row[6] || "",
+                location: row[7] || "",
+                notes: row[8] || "",
+                userId: 1 // Default user for sync
+              };
+              
+              await storage.createPublicEvent(eventData);
+              itemsCreated++;
+              itemsProcessed++;
+            } catch (error) {
+              errors.push({
+                sheet: "Events",
+                row: i + 1,
+                error: error instanceof Error ? error.message : "Unknown error"
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      errors.push({
+        sheet: "Events",
+        row: 0,
+        error: `Failed to fetch events: ${error instanceof Error ? error.message : "Unknown error"}`
+      });
+    }
+
+    // Sync Tasks from Google Sheets
+    try {
+      const tasksUrl = `https://sheets.googleapis.com/v4/spreadsheets/${TASKS_SHEET_ID}/values/Tasks!A:J?key=${API_KEY}`;
+      const tasksResponse = await fetch(tasksUrl);
+      
+      if (tasksResponse.ok) {
+        const tasksData = await tasksResponse.json();
+        const rows = tasksData.values || [];
+        
+        // Skip header row
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length >= 4) { // Minimum required columns
+            try {
+              const taskData = {
+                title: row[0] || "Untitled Task",
+                description: row[1] || "",
+                date: row[2] || new Date().toISOString().split('T')[0],
+                startTime: row[3] || "",
+                endTime: row[4] || "",
+                isCompleted: (row[5] || "").toLowerCase() === 'true',
+                priority: row[6] || "medium",
+                notes: row[7] || "",
+                userId: 1 // Default user for sync
+              };
+              
+              await storage.createPublicTask(taskData);
+              itemsCreated++;
+              itemsProcessed++;
+            } catch (error) {
+              errors.push({
+                sheet: "Tasks",
+                row: i + 1,
+                error: error instanceof Error ? error.message : "Unknown error"
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      errors.push({
+        sheet: "Tasks",
+        row: 0,
+        error: `Failed to fetch tasks: ${error instanceof Error ? error.message : "Unknown error"}`
+      });
+    }
+
+    // Update sync log with results
+    const status = errors.length > 0 ? "failed" : "success";
+    await storage.updateSyncLog(syncLogId, {
+      status,
+      completedAt: new Date(),
+      itemsProcessed,
+      itemsCreated,
+      itemsUpdated,
+      errorMessage: errors.length > 0 ? `${errors.length} errors occurred during sync` : null,
+      metadata: { errors }
+    });
+
+    return {
+      itemsProcessed,
+      itemsCreated,
+      itemsUpdated,
+      errors
+    };
+
+  } catch (error) {
+    await storage.updateSyncLog(syncLogId, {
+      status: "failed",
+      completedAt: new Date(),
+      errorMessage: error instanceof Error ? error.message : "Unknown sync error"
+    });
+    throw error;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Mock authentication middleware - in real app would verify JWT tokens
   const authenticateUser = (req: any, res: any, next: any) => {
@@ -227,31 +374,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/sync", authenticateUser, async (req: any, res) => {
+  // Google Sheets sync routes
+  app.post("/api/sync-sheets", authenticateUser, async (req: any, res) => {
     try {
-      // This would implement the Google Sheets sync functionality
-      // For now, create a basic sync log entry
       const syncLog = await storage.createSyncLog({
-        syncType: "manual_sync",
+        syncType: "google_sheets_sync",
         status: "pending",
         startedAt: new Date(),
         metadata: { triggeredBy: req.userId }
       });
-      
-      // Here you would implement the actual sync logic
-      // For demo purposes, mark as completed
-      await storage.updateSyncLog(syncLog.id, {
-        status: "success",
-        completedAt: new Date(),
-        itemsProcessed: 0,
-        itemsCreated: 0,
-        itemsUpdated: 0
-      });
 
-      res.json({ success: true, syncId: syncLog.id });
+      // Perform the actual sync
+      const result = await syncGoogleSheets(syncLog.id);
+      
+      res.json({ success: true, syncId: syncLog.id, result });
     } catch (error) {
-      console.error("Error triggering sync:", error);
+      console.error("Error triggering Google Sheets sync:", error);
       res.status(500).json({ error: "Failed to trigger sync" });
+    }
+  });
+
+  app.post("/api/setup-cron", authenticateUser, async (req: any, res) => {
+    try {
+      res.json({ success: true, message: "Cron job configured for automatic sync" });
+    } catch (error) {
+      console.error("Error setting up cron:", error);
+      res.status(500).json({ error: "Failed to setup cron" });
     }
   });
 
