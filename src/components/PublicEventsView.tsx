@@ -17,8 +17,8 @@ interface PublicEventsViewProps {
 
 export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) => {
   const [viewMode, setViewMode] = useState<'today' | 'monthly'>('today');
-  const { events: publicEvents, loading: eventsLoading } = usePublicEventsAnonymous();
-  const { tasks: publicTasks, loading: tasksLoading } = usePublicTasksAnonymous();
+  const { publicEvents, loading: eventsLoading } = usePublicEventsAnonymous();
+  const { publicTasks, loading: tasksLoading } = usePublicTasksAnonymous();
   const now = new Date();
 
   if (eventsLoading || tasksLoading) {

@@ -54,11 +54,20 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false, showDa
   const canEdit = user && (
     (!isPublic) || // Private events can be edited by owner (handled by RLS)
     (isPublic && event.userId === user.id) || // Public events can be edited by creator
-    (isPublic && event.userId === null && isAdmin) || // Admins can edit sheet-synced events (user_id is null)
-    (isPublic && isAdmin) // Admins can edit any public event
+    (isPublic && event.userId === null && isAdmin()) || // Admins can edit sheet-synced events (user_id is null)
+    (isPublic && isAdmin()) // Admins can edit any public event
   );
 
-
+  console.log('EventCard debug:', {
+    eventId: event.id,
+    eventTitle: event.title,
+    isPublic,
+    eventUserId: event.userId,
+    currentUserId: user?.id,
+    isAdmin: isAdmin(),
+    canEdit,
+    showActions
+  });
 
   return (
     <Card className={`mb-3 ${ongoing ? 'border-green-500 bg-green-50' : ''} ${isPublic ? 'border-blue-200 bg-blue-50' : ''}`}>
@@ -89,7 +98,7 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false, showDa
                   Public
                 </Badge>
               )}
-              {isPublic && isAdmin && event.userId !== user?.id && (
+              {isPublic && isAdmin() && event.userId !== user?.id && (
                 <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
                   <Crown className="h-3 w-3 mr-1" />
                   Admin Access
