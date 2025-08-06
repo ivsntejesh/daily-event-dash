@@ -226,7 +226,7 @@ export const SyncDashboard = () => {
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• Automatic sync: Every 6 hours</li>
                   <li>• Source: Google Sheets</li>
-                  <li>• Sheet ID: 1lZMQpzzIJpSeKefA8r2H6HbyNnBtTPVwhSqlm6pSOoU</li>
+                  <li>• Sheet ID: 1-FuahakizPAMcPHsvcwVhs0OjBA1G8lAs3SurgZuXnY</li>
                   <li>• Targets: Public Events & Tasks</li>
                 </ul>
               </div>

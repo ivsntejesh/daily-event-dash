@@ -27,8 +27,8 @@ serve(async (req) => {
     
     console.log('Google Sheets API key found, proceeding with sync...');
 
-    // Your new Google Sheet ID
-    const spreadsheetId = '1lZMQpzzIJpSeKefA8r2H6HbyNnBtTPVwhSqlm6pSOoU';
+    // Updated Google Sheet ID
+    const spreadsheetId = '1-FuahakizPAMcPHsvcwVhs0OjBA1G8lAs3SurgZuXnY';
     
     console.log('Starting sync process...');
     console.log('Spreadsheet ID:', spreadsheetId);
