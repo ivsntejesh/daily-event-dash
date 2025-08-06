@@ -1,1 +1,7 @@
 project_id = "enlpugyqiitjycedpdya"
+
+[functions.sheets-sync]
+verify_jwt = false
+
+[functions.setup-cron]
+verify_jwt = false

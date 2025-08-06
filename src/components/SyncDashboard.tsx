@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Clock, CheckCircle, XCircle, AlertCircle, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { handleAsyncError, retryAsync } from '@/utils/errorUtils';
 
 interface SyncLog {
   id: string;
@@ -67,31 +68,42 @@ export const SyncDashboard = () => {
     try {
       console.log('Triggering manual sync...');
       
-      const { data, error } = await supabase.functions.invoke('sheets-sync', {
-        body: { manual: true }
-      });
+      const syncOperation = async () => {
+        const { data, error } = await supabase.functions.invoke('sheets-sync', {
+          body: { manual: true }
+        });
 
-      if (error) {
-        console.error('Manual sync error:', error);
-        throw error;
-      }
+        if (error) {
+          throw error;
+        }
 
+        return data;
+      };
+
+      const data = await retryAsync(syncOperation, 2, 2000);
+      
       console.log('Manual sync response:', data);
       
       toast({
         title: "Success",
-        description: "Manual sync triggered successfully. Check the logs below for results.",
+        description: "Manual sync completed successfully. Check the logs below for results.",
       });
 
       // Refresh logs after sync completes
       setTimeout(() => {
         fetchSyncLogs();
+      }, 2000);
+      
+      // Reload the page to refresh all data
+      setTimeout(() => {
+        window.location.reload();
       }, 3000);
     } catch (error) {
+      const errorMessage = handleAsyncError(error, 'Failed to sync with Google Sheets');
       console.error('Error triggering manual sync:', error);
       toast({
-        title: "Error",
-        description: `Failed to trigger manual sync: ${error.message || 'Unknown error'}`,
+        title: "Sync Error",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

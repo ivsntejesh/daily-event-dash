@@ -8,7 +8,9 @@ import { FormattedEvent } from '@/types/eventTypes';
 export const useEvents = () => {
   const { 
     events: privateEvents, 
-    addEvent: addPrivateEvent, 
+    addEvent: addPrivateEvent,
+    updateEvent: updatePrivateEvent,
+    deleteEvent: deletePrivateEvent,
     loading: privateLoading 
   } = useSupabaseEvents();
   
@@ -61,6 +63,8 @@ export const useEvents = () => {
       // Extract the actual event ID for public events (remove 'public-' prefix)
       const actualId = eventId.startsWith('public-') ? eventId.replace('public-', '') : eventId;
       await updatePublicEvent(actualId, supabaseEventData);
+    } else {
+      await updatePrivateEvent(eventId, supabaseEventData);
     }
   };
 
@@ -69,6 +73,8 @@ export const useEvents = () => {
       // Extract the actual event ID for public events (remove 'public-' prefix)
       const actualId = eventId.startsWith('public-') ? eventId.replace('public-', '') : eventId;
       await deletePublicEvent(actualId);
+    } else {
+      await deletePrivateEvent(eventId);
     }
   };
 

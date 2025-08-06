@@ -11,6 +11,7 @@ import { SearchAndFilter, EventFilters } from '@/components/SearchAndFilter';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useEventFiltering } from '@/hooks/useEventFiltering';
 import { useTasks } from '@/hooks/useTasks';
+import { useEvents } from '@/hooks/useEvents';
 import { useToast } from '@/hooks/use-toast';
 
 interface DailyDashboardProps {
@@ -22,7 +23,9 @@ interface DailyDashboardProps {
   showDates?: boolean;
 }
 
-export const DailyDashboard = ({ events, onEditEvent, onDeleteEvent, onEditTask, onDeleteTask, showDates = true }: DailyDashboardProps) => {
+export const DailyDashboard = ({ events: propsEvents, onEditEvent, onDeleteEvent, onEditTask, onDeleteTask, showDates = true }: DailyDashboardProps) => {
+  const { events: hookEvents } = useEvents();
+  const events = propsEvents || hookEvents;
   const now = new Date();
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<EventFilters>({

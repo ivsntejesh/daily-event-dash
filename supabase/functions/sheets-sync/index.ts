@@ -21,8 +21,11 @@ serve(async (req) => {
 
     const apiKey = Deno.env.get('GOOGLE_SHEETS_API_KEY');
     if (!apiKey) {
-      throw new Error('Google Sheets API key not configured');
+      console.error('Google Sheets API key not found in environment variables');
+      throw new Error('Google Sheets API key not configured. Please set GOOGLE_SHEETS_API_KEY in edge function secrets.');
     }
+    
+    console.log('Google Sheets API key found, proceeding with sync...');
 
     // Your new Google Sheet ID
     const spreadsheetId = '1lZMQpzzIJpSeKefA8r2H6HbyNnBtTPVwhSqlm6pSOoU';
@@ -76,12 +79,18 @@ serve(async (req) => {
         for (let i = 0; i < eventRows.length; i++) {
           const row = eventRows[i];
           if (row.length >= 4) { // Ensure minimum required columns
+            // Validate date format (YYYY-MM-DD)
+            if (!row[2] || !/^\d{4}-\d{2}-\d{2}$/.test(row[2])) {
+              console.warn(`Invalid date format in row ${i + 2}: ${row[2]}, skipping...`);
+              continue;
+            }
+
             const eventData = {
               title: row[0] || 'Untitled Event',
               description: row[1] || null,
               date: row[2],
-              start_time: row[3],
-              end_time: row[4] || row[3], // Use start_time if end_time is missing
+              start_time: row[3] || '00:00:00',
+              end_time: row[4] || row[3] || '23:59:59', // Use start_time if end_time is missing
               is_online: row[5] === 'TRUE' || row[5] === 'true',
               location: row[6] || null,
               meeting_link: row[7] || null,
@@ -155,6 +164,12 @@ serve(async (req) => {
         for (let i = 0; i < taskRows.length; i++) {
           const row = taskRows[i];
           if (row.length >= 3) { // Ensure minimum required columns
+            // Validate date format (YYYY-MM-DD)
+            if (!row[2] || !/^\d{4}-\d{2}-\d{2}$/.test(row[2])) {
+              console.warn(`Invalid date format in row ${i + 2}: ${row[2]}, skipping...`);
+              continue;
+            }
+
             const taskData = {
               title: row[0] || 'Untitled Task',
               description: row[1] || null,
