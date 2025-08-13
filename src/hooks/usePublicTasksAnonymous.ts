@@ -10,9 +10,9 @@ export const usePublicTasksAnonymous = () => {
   const fetchPublicTasks = async () => {
     setLoading(true);
     try {
+      // Use the secure function to fetch tasks without sensitive data for anonymous users
       const { data, error } = await supabase
-        .from('public_tasks')
-        .select('*')
+        .rpc('get_public_tasks_safe')
         .order('date', { ascending: true });
 
       if (error) {

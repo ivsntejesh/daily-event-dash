@@ -304,6 +304,25 @@ export type Database = {
           sheet_id: string
         }[]
       }
+      get_public_tasks_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          title: string
+          description: string
+          date: string
+          start_time: string
+          end_time: string
+          is_completed: boolean
+          created_at: string
+          updated_at: string
+          notes: string
+          user_id: string
+          sheet_row_index: number
+          sheet_id: string
+          priority: string
+        }[]
+      }
       has_role: {
         Args: {
           _user_id: string
