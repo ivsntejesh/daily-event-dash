@@ -10,9 +10,9 @@ export const usePublicEventsAnonymous = () => {
   const fetchPublicEvents = async () => {
     setLoading(true);
     try {
+      // Use the secure function to fetch events without sensitive data for anonymous users
       const { data, error } = await supabase
-        .from('public_events')
-        .select('*')
+        .rpc('get_public_events_safe')
         .order('date', { ascending: true });
 
       if (error) {

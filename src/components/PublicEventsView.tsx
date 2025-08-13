@@ -165,6 +165,19 @@ export const PublicEventsView = ({ onSignIn, onSignUp }: PublicEventsViewProps) 
                 Join Meeting
               </Button>
             )}
+            {event.isOnline && !event.meetingLink && (
+              <div className="mb-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  className="opacity-50"
+                >
+                  <LogIn className="h-3 w-3 mr-1" />
+                  Sign in to see meeting link
+                </Button>
+              </div>
+            )}
             {event.notes && (
               <p className="text-xs text-muted-foreground">{event.notes}</p>
             )}

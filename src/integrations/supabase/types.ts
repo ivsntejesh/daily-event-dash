@@ -277,65 +277,32 @@ export type Database = {
       }
     }
     Views: {
-      public_events_safe: {
-        Row: {
-          created_at: string | null
-          date: string | null
-          description: string | null
-          end_time: string | null
-          id: string | null
-          is_online: boolean | null
-          location: string | null
-          meeting_link: string | null
-          notes: string | null
-          sheet_id: string | null
-          sheet_row_index: number | null
-          start_time: string | null
-          title: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          date?: string | null
-          description?: string | null
-          end_time?: string | null
-          id?: string | null
-          is_online?: boolean | null
-          location?: never
-          meeting_link?: never
-          notes?: never
-          sheet_id?: string | null
-          sheet_row_index?: number | null
-          start_time?: string | null
-          title?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          date?: string | null
-          description?: string | null
-          end_time?: string | null
-          id?: string | null
-          is_online?: boolean | null
-          location?: never
-          meeting_link?: never
-          notes?: never
-          sheet_id?: string | null
-          sheet_row_index?: number | null
-          start_time?: string | null
-          title?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_public_events_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          title: string
+          description: string
+          date: string
+          start_time: string
+          end_time: string
+          is_online: boolean
+          created_at: string
+          updated_at: string
+          meeting_link: string
+          location: string
+          notes: string
+          user_id: string
+          sheet_row_index: number
+          sheet_id: string
+        }[]
       }
       has_role: {
         Args: {
