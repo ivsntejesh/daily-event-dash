@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -287,46 +287,46 @@ export type Database = {
       get_public_events_safe: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          title: string
-          description: string
-          date: string
-          start_time: string
-          end_time: string
-          is_online: boolean
           created_at: string
-          updated_at: string
-          meeting_link: string
+          date: string
+          description: string
+          end_time: string
+          id: string
+          is_online: boolean
           location: string
+          meeting_link: string
           notes: string
-          user_id: string
-          sheet_row_index: number
           sheet_id: string
+          sheet_row_index: number
+          start_time: string
+          title: string
+          updated_at: string
+          user_id: string
         }[]
       }
       get_public_tasks_safe: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          title: string
-          description: string
-          date: string
-          start_time: string
-          end_time: string
-          is_completed: boolean
           created_at: string
-          updated_at: string
+          date: string
+          description: string
+          end_time: string
+          id: string
+          is_completed: boolean
           notes: string
-          user_id: string
-          sheet_row_index: number
-          sheet_id: string
           priority: string
+          sheet_id: string
+          sheet_row_index: number
+          start_time: string
+          title: string
+          updated_at: string
+          user_id: string
         }[]
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
