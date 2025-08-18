@@ -20,6 +20,7 @@ interface SyncLog {
   items_created: number | null;
   items_updated: number | null;
   error_message: string | null;
+  metadata?: Record<string, any> | null;
 }
 
 export const SyncDashboard = () => {
@@ -50,7 +51,10 @@ export const SyncDashboard = () => {
       }
       
       console.log('Successfully fetched sync logs:', data?.length || 0, 'records');
-      setSyncLogs(data || []);
+      setSyncLogs(data?.map(log => ({
+        ...log,
+        metadata: log.metadata as Record<string, any> | null
+      })) || []);
     } catch (error) {
       console.error('Error fetching sync logs:', error);
       toast({
@@ -290,6 +294,12 @@ export const SyncDashboard = () => {
                         <div>Processed: {log.items_processed || 0}</div>
                         <div>Created: {log.items_created || 0}</div>
                         <div>Updated: {log.items_updated || 0}</div>
+                        {log.metadata && typeof log.metadata === 'object' && 'events_processed' in log.metadata && (
+                          <>
+                            <div>Events: {(log.metadata as any).events_processed || 0}</div>
+                            <div>Tasks: {(log.metadata as any).tasks_processed || 0}</div>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
