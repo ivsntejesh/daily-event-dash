@@ -12,6 +12,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { FormattedTask, TaskPriority } from '@/types/taskTypes';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useInputValidation } from '@/hooks/useInputValidation';
+import { useToast } from '@/hooks/use-toast';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -33,6 +35,10 @@ interface TaskFormProps {
 }
 
 export const TaskForm = ({ onSave, onCancel, editingTask }: TaskFormProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { validateAndSanitizeForm, isValidating } = useInputValidation();
+  const { toast } = useToast();
+  
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
@@ -62,8 +68,22 @@ export const TaskForm = ({ onSave, onCancel, editingTask }: TaskFormProps) => {
     }
   }, [editingTask, form]);
 
-  const onSubmit = (data: TaskFormData) => {
-    onSave(data, data.isPublic);
+  const onSubmit = async (data: TaskFormData) => {
+    setIsSubmitting(true);
+    try {
+      // Validate and sanitize form data
+      const sanitizedData = await validateAndSanitizeForm(data);
+      onSave(sanitizedData, sanitizedData.isPublic);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save task. Please try again.";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -206,8 +226,8 @@ export const TaskForm = ({ onSave, onCancel, editingTask }: TaskFormProps) => {
               />
 
               <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1">
-                  {editingTask ? 'Update Task' : 'Create Task'}
+                <Button type="submit" className="flex-1" disabled={isSubmitting || isValidating}>
+                  {isSubmitting || isValidating ? 'Validating...' : (editingTask ? 'Update Task' : 'Create Task')}
                 </Button>
                 <Button type="button" variant="outline" onClick={onCancel}>
                   Cancel

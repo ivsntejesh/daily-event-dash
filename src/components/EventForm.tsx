@@ -6,6 +6,7 @@ import { FormattedEvent } from '@/types/eventTypes';
 import { useSupabaseEvents } from '@/hooks/useSupabaseEvents';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInputValidation } from '@/hooks/useInputValidation';
 import { EventVisibilitySelector } from './EventVisibilitySelector';
 import { EventFormFields } from './EventFormFields';
 import { EventLocationFields } from './EventLocationFields';
@@ -31,9 +32,11 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
 
   const [isPublicEvent, setIsPublicEvent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { updateEvent } = useSupabaseEvents();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { validateAndSanitizeForm, isValidating } = useInputValidation();
 
   console.log('EventForm render state:', {
     isEditing: !!editingEvent,
@@ -107,32 +110,39 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
     e.preventDefault();
     
     if (validateForm()) {
+      setIsSubmitting(true);
       try {
+        // Validate and sanitize form data
+        const sanitizedData = await validateAndSanitizeForm(formData);
+        
         if (editingEvent && !editingEvent.isPublic) {
           const eventId = editingEvent.id;
           const updateData = {
-            title: formData.title,
-            description: formData.description,
-            date: formData.date,
-            start_time: formData.startTime,
-            end_time: formData.endTime,
-            is_online: formData.isOnline,
-            meeting_link: formData.meetingLink,
-            location: formData.location,
-            notes: formData.notes,
+            title: sanitizedData.title,
+            description: sanitizedData.description,
+            date: sanitizedData.date,
+            start_time: sanitizedData.startTime,
+            end_time: sanitizedData.endTime,
+            is_online: sanitizedData.isOnline,
+            meeting_link: sanitizedData.meetingLink,
+            location: sanitizedData.location,
+            notes: sanitizedData.notes,
           };
           
           await updateEvent(eventId, updateData);
           onCancel();
         } else {
-          onSave(formData, isPublicEvent);
+          onSave(sanitizedData, isPublicEvent);
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to save event. Please try again.";
         toast({
           title: "Error",
-          description: "Failed to save event. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
@@ -203,8 +213,8 @@ export const EventForm = ({ onSave, onCancel, editingEvent }: EventFormProps) =>
 
             <div className="flex gap-3 pt-4">
               {(!isPublicEventEdit || canEditPublicEvent) && (
-                <Button type="submit" className="flex-1">
-                  {isEditing ? 'Update Event' : 'Save Event'}
+                <Button type="submit" className="flex-1" disabled={isSubmitting || isValidating}>
+                  {isSubmitting || isValidating ? 'Validating...' : (isEditing ? 'Update Event' : 'Save Event')}
                 </Button>
               )}
               <Button type="button" variant="outline" onClick={onCancel}>

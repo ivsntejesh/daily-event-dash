@@ -284,6 +284,26 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_public_events_authenticated_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          date: string
+          description: string
+          end_time: string
+          id: string
+          is_online: boolean
+          location: string
+          meeting_link: string
+          notes: string
+          sheet_id: string
+          sheet_row_index: number
+          start_time: string
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_public_events_safe: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -296,6 +316,25 @@ export type Database = {
           location: string
           meeting_link: string
           notes: string
+          sheet_id: string
+          sheet_row_index: number
+          start_time: string
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
+      get_public_tasks_enhanced_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          date: string
+          description: string
+          end_time: string
+          id: string
+          is_completed: boolean
+          notes: string
+          priority: string
           sheet_id: string
           sheet_row_index: number
           start_time: string
@@ -328,6 +367,18 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      log_security_event: {
+        Args: { details?: Json; event_type: string; user_id: string }
+        Returns: undefined
+      }
+      sanitize_text_input: {
+        Args: { input_text: string }
+        Returns: string
+      }
+      validate_meeting_link: {
+        Args: { link: string }
         Returns: boolean
       }
     }
