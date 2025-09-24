@@ -71,44 +71,74 @@ export const SyncDashboard = () => {
     setSyncing(true);
     try {
       console.log('Triggering manual sync...');
-      
+
       const syncOperation = async () => {
         const { data, error } = await supabase.functions.invoke('sheets-sync', {
           body: { manual: true }
         });
-
-        if (error) {
-          throw error;
-        }
-
-        return data;
+        if (error) throw error;
+        return data as { success?: boolean; sync_log_id?: string };
       };
 
       const data = await retryAsync(syncOperation, 2, 2000);
-      
       console.log('Manual sync response:', data);
-      
-      toast({
-        title: "Success",
-        description: "Manual sync completed successfully. Check the logs below for results.",
-      });
 
-      // Refresh logs after sync completes
-      setTimeout(() => {
-        fetchSyncLogs();
-      }, 2000);
-      
-      // Reload the page to refresh all data
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+      // If we have a sync log id, poll until completed (success/failed) to ensure UI has fresh data
+      if (data?.sync_log_id) {
+        const logId = data.sync_log_id;
+        let attempts = 0;
+        const maxAttempts = 20; // ~30s max (with 1500ms delay)
+        while (attempts < maxAttempts) {
+          const { data: log, error } = await supabase
+            .from('sync_log')
+            .select('status, items_processed, items_created, items_updated')
+            .eq('id', logId)
+            .single();
+          if (error) {
+            console.warn('Polling sync log failed:', error);
+            break;
+          }
+          if (log && log.status !== 'pending') {
+            console.log('Sync finished with status:', log.status);
+            if (log.status === 'success') {
+              toast({
+                title: 'Sync complete',
+                description: `Processed ${log.items_processed || 0}. Created ${log.items_created || 0}, Updated ${log.items_updated || 0}.`
+              });
+            } else {
+              toast({
+                title: 'Sync failed',
+                description: 'Please check the sync logs below for details.',
+                variant: 'destructive'
+              });
+            }
+            // Refresh logs and reload to ensure data reflects latest sync
+            await fetchSyncLogs();
+            setTimeout(() => window.location.reload(), 500);
+            break;
+          }
+          attempts++;
+          await sleep(1500);
+        }
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Manual sync triggered. Refreshing shortly...'
+        });
+        setTimeout(() => {
+          fetchSyncLogs();
+          window.location.reload();
+        }, 3000);
+      }
     } catch (error) {
       const errorMessage = handleAsyncError(error, 'Failed to sync with Google Sheets');
       console.error('Error triggering manual sync:', error);
       toast({
-        title: "Sync Error",
+        title: 'Sync Error',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setSyncing(false);

@@ -7,44 +7,79 @@ const corsHeaders = {
 }
 
 // Helper function to parse dates in various formats
-function parseSheetDate(dateStr: string, year = 2025): string | null {
-  if (!dateStr || dateStr.trim() === '') return null;
-  
+function parseSheetDate(dateStr: string, defaultYear = 2025): string | null {
+  if (!dateStr) return null;
+  const raw = dateStr.trim().replace(/,/g, '');
+  if (!raw) return null;
+
   try {
-    // Handle formats like "28-Apr", "29-Apr", etc.
-    const monthMap: { [key: string]: string } = {
-      'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-      'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-      'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+    // Fast path: ISO
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+    // Month name map (3+ letters)
+    const monthMap: Record<string, string> = {
+      jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+      jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
     };
-    
-    // Handle "DD-MMM" format
-    const dayMonthMatch = dateStr.match(/^(\d{1,2})-([A-Za-z]{3})$/);
-    if (dayMonthMatch) {
-      const [, day, month] = dayMonthMatch;
-      const monthNum = monthMap[month];
-      if (monthNum) {
-        const paddedDay = day.padStart(2, '0');
-        return `${year}-${monthNum}-${paddedDay}`;
-      }
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const normYear = (y: number) => (y < 100 ? 2000 + y : y);
+
+    // 1) Day-Month short name: "DD-MMM" or "DD MMM" (e.g., 11 Aug)
+    let m = raw.match(/^(\d{1,2})[-\s]([A-Za-z]{3,})$/);
+    if (m) {
+      const day = parseInt(m[1], 10);
+      const mon = monthMap[m[2].slice(0,3).toLowerCase()];
+      if (mon) return `${defaultYear}-${mon}-${pad(day)}`;
     }
-    
-    // Handle "YYYY-MM-DD" format (already correct)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      return dateStr;
+
+    // 2) Day-Month-Year with name: "DD MMM YYYY" or "DD MMM YY"
+    m = raw.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{2,4})$/);
+    if (m) {
+      const day = parseInt(m[1], 10);
+      const mon = monthMap[m[2].slice(0,3).toLowerCase()];
+      const year = normYear(parseInt(m[3], 10));
+      if (mon) return `${year}-${mon}-${pad(day)}`;
     }
-    
-    // Handle "MM/DD/YYYY" format
-    const slashMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (slashMatch) {
-      const [, month, day, yearVal] = slashMatch;
-      return `${yearVal}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+
+    // 3) Month-Day (name first): "MMM DD" or "MMM DD YYYY"
+    m = raw.match(/^([A-Za-z]{3,})\s+(\d{1,2})(?:\s+(\d{2,4}))?$/);
+    if (m) {
+      const mon = monthMap[m[1].slice(0,3).toLowerCase()];
+      const day = parseInt(m[2], 10);
+      const year = m[3] ? normYear(parseInt(m[3], 10)) : defaultYear;
+      if (mon) return `${year}-${mon}-${pad(day)}`;
     }
-    
-    console.warn(`Unrecognized date format: ${dateStr}`);
+
+    // 4) Slash or dash numeric dates: supports DD/MM/YY, DD/MM/YYYY, MM/DD/YYYY
+    m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if (m) {
+      let a = parseInt(m[1], 10); // day or month
+      let b = parseInt(m[2], 10); // month or day
+      const y = normYear(parseInt(m[3], 10));
+
+      // Heuristic: if first > 12 => DD/MM; if second > 12 => MM/DD; else assume DD/MM
+      let day: number, month: number;
+      if (a > 12) { day = a; month = b; }
+      else if (b > 12) { month = a; day = b; }
+      else { day = a; month = b; }
+
+      return `${y}-${pad(month)}-${pad(day)}`;
+    }
+
+    // 5) US-style MM/DD/YYYY already covered, but also handle e.g., 4/7 (assume current year, DD/MM)
+    m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+    if (m) {
+      // Assume DD/MM
+      const day = parseInt(m[1], 10);
+      const month = parseInt(m[2], 10);
+      return `${defaultYear}-${pad(month)}-${pad(day)}`;
+    }
+
+    console.warn(`Unrecognized date format: ${raw}`);
     return null;
   } catch (error) {
-    console.error(`Error parsing date "${dateStr}":`, error);
+    console.error(`Error parsing date "${raw}":`, error);
     return null;
   }
 }
