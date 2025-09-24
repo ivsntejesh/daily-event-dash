@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper function to parse dates in various formats
+// Enhanced helper function to parse dates in various formats
 function parseSheetDate(dateStr: string, defaultYear = 2025): string | null {
   if (!dateStr) return null;
   const raw = dateStr.trim().replace(/,/g, '');
@@ -174,8 +174,21 @@ serve(async (req) => {
     
     console.log('Google Sheets API key found, proceeding with sync...');
 
-    // Updated Google Sheet ID
-    const spreadsheetId = '1-FuahakizPAMcPHsvcwVhs0OjBA1G8lAs3SurgZuXnY';
+    // Get sheet ID from config or fallback to default
+    let spreadsheetId = '1-FuahakizPAMcPHsvcwVhs0OjBA1G8lAs3SurgZuXnY';
+    try {
+      const { data: configData } = await supabase
+        .from('sync_config')
+        .select('config_value')
+        .eq('config_key', 'default_sheet_id')
+        .maybeSingle();
+      
+      if (configData?.config_value) {
+        spreadsheetId = configData.config_value;
+      }
+    } catch (configError) {
+      console.warn('Could not fetch sheet ID from config, using default:', configError);
+    }
     
     console.log('Starting sync process...');
     console.log('Spreadsheet ID:', spreadsheetId);
@@ -206,10 +219,27 @@ serve(async (req) => {
     let tasksProcessed = 0;
 
     try {
-      // Fetch data from Sheet1 (the main sheet with all data)
+      // First, get sheet metadata to determine the actual data range
+      console.log('Getting sheet metadata...');
+      const metadataResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?key=${apiKey}&fields=sheets.properties`
+      );
+
+      let maxRange = 'A1:Z1200'; // fallback
+      if (metadataResponse.ok) {
+        const metadata = await metadataResponse.json();
+        const sheet = metadata.sheets?.find((s: any) => s.properties?.title === 'Sheet1');
+        if (sheet?.properties?.gridProperties?.rowCount) {
+          const rowCount = Math.min(sheet.properties.gridProperties.rowCount, 5000); // Cap at 5k for safety
+          maxRange = `A1:Z${rowCount}`;
+          console.log(`Detected ${rowCount} rows, using range: ${maxRange}`);
+        }
+      }
+
+      // Fetch data from Sheet1 with dynamic range
       console.log('Fetching data from Sheet1...');
       const dataResponse = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:Z1200?key=${apiKey}`
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!${maxRange}?key=${apiKey}`
       );
 
       if (!dataResponse.ok) {
@@ -224,6 +254,10 @@ serve(async (req) => {
       if (sheetData.values && sheetData.values.length > 1) {
         const dataRows = sheetData.values.slice(1); // Skip header row
         console.log(`Processing ${dataRows.length} data rows...`);
+
+        // Prepare arrays for bulk operations
+        const eventsToUpsert: any[] = [];
+        const tasksToUpsert: any[] = [];
 
         for (let i = 0; i < dataRows.length; i++) {
           const row = dataRows[i];
@@ -270,43 +304,7 @@ serve(async (req) => {
               notes: status ? `Status: ${status}` : null
             };
 
-            console.log(`Processing event ${eventsProcessed + 1}:`, eventData.title);
-
-            // Check if event already exists
-            const { data: existingEvent } = await supabase
-              .from('public_events')
-              .select('id')
-              .eq('sheet_id', spreadsheetId)
-              .eq('sheet_row_index', i + 2)
-              .single();
-
-            if (existingEvent) {
-              // Update existing event
-              const { error: updateError } = await supabase
-                .from('public_events')
-                .update(eventData)
-                .eq('id', existingEvent.id);
-
-              if (updateError) {
-                console.error(`Error updating event ${eventsProcessed + 1}:`, updateError);
-              } else {
-                totalItemsUpdated++;
-                console.log(`Updated existing event: ${eventData.title}`);
-              }
-            } else {
-              // Insert new event
-              const { error: insertError } = await supabase
-                .from('public_events')
-                .insert(eventData);
-
-              if (insertError) {
-                console.error(`Error inserting event ${eventsProcessed + 1}:`, insertError);
-              } else {
-                totalItemsCreated++;
-                console.log(`Created new event: ${eventData.title}`);
-              }
-            }
-            
+            eventsToUpsert.push(eventData);
             eventsProcessed++;
           } else {
             // Process as task
@@ -321,47 +319,101 @@ serve(async (req) => {
               notes: status ? `Status: ${status}` : null
             };
 
-            console.log(`Processing task ${tasksProcessed + 1}:`, taskData.title);
-
-            // Check if task already exists
-            const { data: existingTask } = await supabase
-              .from('public_tasks')
-              .select('id')
-              .eq('sheet_id', spreadsheetId)
-              .eq('sheet_row_index', i + 2)
-              .single();
-
-            if (existingTask) {
-              // Update existing task
-              const { error: updateError } = await supabase
-                .from('public_tasks')
-                .update(taskData)
-                .eq('id', existingTask.id);
-
-              if (updateError) {
-                console.error(`Error updating task ${tasksProcessed + 1}:`, updateError);
-              } else {
-                totalItemsUpdated++;
-                console.log(`Updated existing task: ${taskData.title}`);
-              }
-            } else {
-              // Insert new task
-              const { error: insertError } = await supabase
-                .from('public_tasks')
-                .insert(taskData);
-
-              if (insertError) {
-                console.error(`Error inserting task ${tasksProcessed + 1}:`, insertError);
-              } else {
-                totalItemsCreated++;
-                console.log(`Created new task: ${taskData.title}`);
-              }
-            }
-            
+            tasksToUpsert.push(taskData);
             tasksProcessed++;
           }
 
           totalItemsProcessed++;
+        }
+
+        // Bulk upsert events in batches
+        if (eventsToUpsert.length > 0) {
+          console.log(`Upserting ${eventsToUpsert.length} events in batches...`);
+          const eventBatchSize = 100;
+          for (let i = 0; i < eventsToUpsert.length; i += eventBatchSize) {
+            const batch = eventsToUpsert.slice(i, i + eventBatchSize);
+            const { data: upsertedEvents, error: eventUpsertError } = await supabase
+              .from('public_events')
+              .upsert(batch, {
+                onConflict: 'sheet_id,sheet_row_index',
+                ignoreDuplicates: false
+              })
+              .select('id');
+
+            if (eventUpsertError) {
+              console.error(`Error upserting events batch ${i / eventBatchSize + 1}:`, eventUpsertError);
+              // Try individual inserts/updates as fallback
+              for (const eventData of batch) {
+                try {
+                  const { data: existing } = await supabase
+                    .from('public_events')
+                    .select('id')
+                    .eq('sheet_id', eventData.sheet_id)
+                    .eq('sheet_row_index', eventData.sheet_row_index)
+                    .maybeSingle();
+
+                  if (existing) {
+                    await supabase.from('public_events').update(eventData).eq('id', existing.id);
+                    totalItemsUpdated++;
+                  } else {
+                    await supabase.from('public_events').insert(eventData);
+                    totalItemsCreated++;
+                  }
+                } catch (fallbackError) {
+                  console.error('Fallback event operation failed:', fallbackError);
+                }
+              }
+            } else {
+              // Count as updates since upsert was used
+              totalItemsUpdated += batch.length;
+              console.log(`Successfully upserted events batch ${i / eventBatchSize + 1}`);
+            }
+          }
+        }
+
+        // Bulk upsert tasks in batches
+        if (tasksToUpsert.length > 0) {
+          console.log(`Upserting ${tasksToUpsert.length} tasks in batches...`);
+          const taskBatchSize = 100;
+          for (let i = 0; i < tasksToUpsert.length; i += taskBatchSize) {
+            const batch = tasksToUpsert.slice(i, i + taskBatchSize);
+            const { data: upsertedTasks, error: taskUpsertError } = await supabase
+              .from('public_tasks')
+              .upsert(batch, {
+                onConflict: 'sheet_id,sheet_row_index',
+                ignoreDuplicates: false
+              })
+              .select('id');
+
+            if (taskUpsertError) {
+              console.error(`Error upserting tasks batch ${i / taskBatchSize + 1}:`, taskUpsertError);
+              // Try individual inserts/updates as fallback
+              for (const taskData of batch) {
+                try {
+                  const { data: existing } = await supabase
+                    .from('public_tasks')
+                    .select('id')
+                    .eq('sheet_id', taskData.sheet_id)
+                    .eq('sheet_row_index', taskData.sheet_row_index)
+                    .maybeSingle();
+
+                  if (existing) {
+                    await supabase.from('public_tasks').update(taskData).eq('id', existing.id);
+                    totalItemsUpdated++;
+                  } else {
+                    await supabase.from('public_tasks').insert(taskData);
+                    totalItemsCreated++;
+                  }
+                } catch (fallbackError) {
+                  console.error('Fallback task operation failed:', fallbackError);
+                }
+              }
+            } else {
+              // Count as updates since upsert was used
+              totalItemsUpdated += batch.length;
+              console.log(`Successfully upserted tasks batch ${i / taskBatchSize + 1}`);
+            }
+          }
         }
       }
 
@@ -377,7 +429,8 @@ serve(async (req) => {
           metadata: { 
             spreadsheet_id: spreadsheetId, 
             events_processed: eventsProcessed,
-            tasks_processed: tasksProcessed
+            tasks_processed: tasksProcessed,
+            range_used: maxRange
           }
         })
         .eq('id', syncLog.id);
