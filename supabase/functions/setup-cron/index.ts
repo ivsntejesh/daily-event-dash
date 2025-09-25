@@ -71,7 +71,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: 'Failed to setup automatic sync',
-        details: error.message,
+        details: (error as Error).message,
         instructions: {
           manual_setup: 'Please enable pg_cron and pg_net extensions in your Supabase project, then use the Manual Sync button as needed.'
         }

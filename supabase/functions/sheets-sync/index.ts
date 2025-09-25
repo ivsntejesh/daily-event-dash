@@ -85,47 +85,94 @@ function parseSheetDate(dateStr: string, defaultYear = 2025): string | null {
 }
 
 // Helper function to parse time in various formats
-function parseSheetTime(timeStr: string): string | null {
-  if (!timeStr || timeStr.trim() === '') return null;
+function parseSheetTime(timeStr: string): { startTime: string | null, endTime: string | null } {
+  if (!timeStr || timeStr.trim() === '') return { startTime: null, endTime: null };
+  
+  const cleanTimeStr = timeStr.trim();
   
   try {
-    // Handle "4:30 PM", "8:00 AM" format
-    const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (timeMatch) {
-      let [, hours, minutes, ampm] = timeMatch;
-      let hour24 = parseInt(hours);
-      
-      if (ampm.toUpperCase() === 'PM' && hour24 !== 12) {
-        hour24 += 12;
-      } else if (ampm.toUpperCase() === 'AM' && hour24 === 12) {
-        hour24 = 0;
+    // Handle time ranges like "9:00 AM - 10:30 AM", "9-10:30 AM", "4pm - 6pm"
+    const rangePatterns = [
+      /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*[-–]\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i, // Full range with minutes
+      /^(\d{1,2})\s*(AM|PM)\s*[-–]\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i, // Start hour only, end with minutes
+      /^(\d{1,2})\s*(AM|PM)\s*[-–]\s*(\d{1,2})\s*(AM|PM)$/i, // Both hours only
+      /^(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})$/i // 24-hour format range
+    ];
+    
+    for (const pattern of rangePatterns) {
+      const match = cleanTimeStr.match(pattern);
+      if (match) {
+        let startTime, endTime;
+        
+        if (pattern === rangePatterns[0]) { // Full range with AM/PM
+          const [, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = match;
+          startTime = convertTo24Hour(startHour, startMin, startAmPm);
+          endTime = convertTo24Hour(endHour, endMin, endAmPm);
+        } else if (pattern === rangePatterns[1]) { // Start hour only
+          const [, startHour, startAmPm, endHour, endMin, endAmPm] = match;
+          startTime = convertTo24Hour(startHour, '00', startAmPm);
+          endTime = convertTo24Hour(endHour, endMin, endAmPm);
+        } else if (pattern === rangePatterns[2]) { // Both hours only
+          const [, startHour, startAmPm, endHour, endAmPm] = match;
+          startTime = convertTo24Hour(startHour, '00', startAmPm);
+          endTime = convertTo24Hour(endHour, '00', endAmPm);
+        } else { // 24-hour format
+          const [, startHour, startMin, endHour, endMin] = match;
+          startTime = `${startHour.padStart(2, '0')}:${startMin}:00`;
+          endTime = `${endHour.padStart(2, '0')}:${endMin}:00`;
+        }
+        
+        return { startTime, endTime };
       }
-      
-      return `${hour24.toString().padStart(2, '0')}:${minutes}:00`;
     }
     
-    // Handle "HH:MM" format
-    if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-      return `${timeStr}:00`;
+    // Handle single time formats (tasks)
+    // "4:30 PM", "8:00 AM" format
+    const timeMatch = cleanTimeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (timeMatch) {
+      const [, hours, minutes, ampm] = timeMatch;
+      const startTime = convertTo24Hour(hours, minutes, ampm);
+      return { startTime, endTime: null };
+    }
+    
+    // "9 AM", "4 PM" format (hour only)
+    const hourMatch = cleanTimeStr.match(/^(\d{1,2})\s*(AM|PM)$/i);
+    if (hourMatch) {
+      const [, hours, ampm] = hourMatch;
+      const startTime = convertTo24Hour(hours, '00', ampm);
+      return { startTime, endTime: null };
+    }
+    
+    // Handle "HH:MM" format (24-hour)
+    if (/^\d{1,2}:\d{2}$/.test(cleanTimeStr)) {
+      const [hours, minutes] = cleanTimeStr.split(':');
+      return { startTime: `${hours.padStart(2, '0')}:${minutes}:00`, endTime: null };
     }
     
     // Handle "HH:MM:SS" format
-    if (/^\d{1,2}:\d{2}:\d{2}$/.test(timeStr)) {
-      return timeStr;
+    if (/^\d{1,2}:\d{2}:\d{2}$/.test(cleanTimeStr)) {
+      return { startTime: cleanTimeStr, endTime: null };
     }
     
-    // Handle time ranges like "4pm - 6pm", "9-12:30 pm" - extract start time
-    const rangeMatch = timeStr.match(/^(\d{1,2}(?::\d{2})?)\s*(?:am|pm)?/i);
-    if (rangeMatch) {
-      return parseSheetTime(rangeMatch[1] + (timeStr.includes('pm') ? ' PM' : ' AM'));
-    }
-    
-    console.warn(`Unrecognized time format: ${timeStr}`);
-    return null;
+    console.warn(`Unrecognized time format: ${cleanTimeStr}`);
+    return { startTime: null, endTime: null };
   } catch (error) {
-    console.error(`Error parsing time "${timeStr}":`, error);
-    return null;
+    console.error(`Error parsing time "${cleanTimeStr}":`, error);
+    return { startTime: null, endTime: null };
   }
+}
+
+// Helper function to convert 12-hour to 24-hour format
+function convertTo24Hour(hours: string, minutes: string, ampm: string): string {
+  let hour24 = parseInt(hours);
+  
+  if (ampm.toUpperCase() === 'PM' && hour24 !== 12) {
+    hour24 += 12;
+  } else if (ampm.toUpperCase() === 'AM' && hour24 === 12) {
+    hour24 = 0;
+  }
+  
+  return `${hour24.toString().padStart(2, '0')}:${minutes}:00`;
 }
 
 // Helper function to determine if a row represents an event or task
@@ -276,7 +323,7 @@ serve(async (req) => {
           const category = categorizeRow(row);
           if (category === 'skip') continue;
           
-          const parsedTime = parseSheetTime(row[2]); // Time is in column C (index 2)
+          const timeData = parseSheetTime(row[2]); // Time is in column C (index 2)
           const status = row[3] || ''; // Status in column D (index 3)
           const remarks = row[4] || ''; // Remarks in column E (index 4)
           
@@ -289,15 +336,15 @@ serve(async (req) => {
           };
 
           if (category === 'event') {
-            // Process as event
+            // Process as event - use provided times or defaults
             const eventData = {
               ...baseData,
               description: remarks || null,
-              start_time: parsedTime || '09:00:00',
-              end_time: parsedTime ? 
-                (parsedTime.split(':')[0] === '23' ? '23:59:00' : 
-                 `${(parseInt(parsedTime.split(':')[0]) + 1).toString().padStart(2, '0')}:${parsedTime.split(':')[1]}:00`) 
-                : '10:00:00',
+              start_time: timeData.startTime || '09:00:00',
+              end_time: timeData.endTime || (timeData.startTime ? 
+                (timeData.startTime.split(':')[0] === '23' ? '23:59:00' : 
+                 `${(parseInt(timeData.startTime.split(':')[0]) + 1).toString().padStart(2, '0')}:${timeData.startTime.split(':')[1]}:00`) 
+                : '10:00:00'),
               is_online: remarks.toLowerCase().includes('online') || remarks.toLowerCase().includes('zoom'),
               location: remarks.toLowerCase().includes('online') ? null : 'Campus',
               meeting_link: null,
@@ -307,12 +354,12 @@ serve(async (req) => {
             eventsToUpsert.push(eventData);
             eventsProcessed++;
           } else {
-            // Process as task
+            // Process as task - only use start time, no end time for tasks
             const taskData = {
               ...baseData,
               description: remarks || null,
-              start_time: parsedTime,
-              end_time: null,
+              start_time: timeData.startTime,
+              end_time: null, // Tasks don't have end times
               is_completed: status.toLowerCase().includes('complete') || status.toLowerCase() === 'done',
               priority: remarks.toLowerCase().includes('urgent') ? 'high' : 
                        remarks.toLowerCase().includes('important') ? 'high' : 'medium',
@@ -464,7 +511,7 @@ serve(async (req) => {
         .update({
           status: 'failed',
           completed_at: new Date().toISOString(),
-          error_message: syncError.message,
+          error_message: (syncError as Error).message,
           items_processed: totalItemsProcessed,
           items_created: totalItemsCreated,
           items_updated: totalItemsUpdated
@@ -478,8 +525,8 @@ serve(async (req) => {
     console.error('Function error:', error);
     return new Response(
       JSON.stringify({
-        error: error.message,
-        details: error.stack
+        error: (error as Error).message,
+        details: (error as Error).stack
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
