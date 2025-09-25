@@ -2,10 +2,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useRefreshData } from '@/hooks/useRefreshData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Clock, CheckCircle, XCircle, AlertCircle, Play } from 'lucide-react';
+import { RefreshCw, Clock, CheckCircle, XCircle, AlertCircle, Play, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { handleAsyncError, retryAsync } from '@/utils/errorUtils';
@@ -27,7 +28,9 @@ export const SyncDashboard = () => {
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
+  const { refreshAll } = useRefreshData();
   const { toast } = useToast();
 
   const fetchSyncLogs = async () => {
@@ -69,6 +72,7 @@ export const SyncDashboard = () => {
 
   const triggerManualSync = async () => {
     setSyncing(true);
+    setSyncError(null);
     try {
       console.log('Triggering manual sync...');
 
@@ -107,16 +111,18 @@ export const SyncDashboard = () => {
                 title: 'Sync complete',
                 description: `Processed ${log.items_processed || 0}. Created ${log.items_created || 0}, Updated ${log.items_updated || 0}.`
               });
+              // Refresh logs and data smoothly without page reload
+              await fetchSyncLogs();
+              refreshAll();
             } else {
+              setSyncError('Sync failed. Please try again.');
               toast({
                 title: 'Sync failed',
                 description: 'Please check the sync logs below for details.',
                 variant: 'destructive'
               });
+              await fetchSyncLogs();
             }
-            // Refresh logs and reload to ensure data reflects latest sync
-            await fetchSyncLogs();
-            setTimeout(() => window.location.reload(), 500);
             break;
           }
           attempts++;
@@ -125,16 +131,17 @@ export const SyncDashboard = () => {
       } else {
         toast({
           title: 'Success',
-          description: 'Manual sync triggered. Refreshing shortly...'
+          description: 'Manual sync triggered successfully.'
         });
-        setTimeout(() => {
-          fetchSyncLogs();
-          window.location.reload();
-        }, 3000);
+        setTimeout(async () => {
+          await fetchSyncLogs();
+          refreshAll();
+        }, 1500);
       }
     } catch (error) {
       const errorMessage = handleAsyncError(error, 'Failed to sync with Google Sheets');
       console.error('Error triggering manual sync:', error);
+      setSyncError('Sync failed. Please try again.');
       toast({
         title: 'Sync Error',
         description: errorMessage,
@@ -218,15 +225,48 @@ export const SyncDashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-6 relative">
+      {/* Sync Loading Overlay */}
+      {syncing && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-card p-8 rounded-lg border shadow-lg max-w-sm w-full mx-4 animate-fade-in">
+            <div className="text-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+              <div>
+                <h3 className="text-lg font-semibold">Syncing data…</h3>
+                <p className="text-muted-foreground">Please wait while we fetch the latest data from Google Sheets.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {syncError && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg animate-fade-in">
+          <div className="flex items-center gap-2">
+            <XCircle className="h-4 w-4" />
+            <span>{syncError}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSyncError(null)}
+              className="ml-auto h-auto p-0"
+            >
+              <XCircle className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <Card className="animate-fade-in">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Google Sheets Sync Dashboard</CardTitle>
             <div className="flex gap-2">
               <Button
                 onClick={fetchSyncLogs}
-                disabled={loading}
+                disabled={loading || syncing}
                 variant="outline"
                 size="sm"
               >
@@ -235,6 +275,7 @@ export const SyncDashboard = () => {
               </Button>
               <Button
                 onClick={setupAutomaticSync}
+                disabled={syncing}
                 variant="outline"
                 size="sm"
               >
@@ -247,7 +288,7 @@ export const SyncDashboard = () => {
                 size="sm"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                Manual Sync
+                {syncing ? 'Syncing...' : 'Sync Now'}
               </Button>
             </div>
           </div>
@@ -294,12 +335,13 @@ export const SyncDashboard = () => {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fade-in">
                 <h4 className="font-medium">Recent Sync History</h4>
-                {syncLogs.map((log) => (
+                {syncLogs.map((log, index) => (
                   <div
                     key={log.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover-scale transition-all duration-200"
+                    style={{ animationDelay: `${index * 50}ms` }}
                   >
                     <div className="flex items-center gap-3">
                       {getStatusIcon(log.status)}
