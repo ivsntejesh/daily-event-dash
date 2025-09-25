@@ -180,25 +180,24 @@ function categorizeRow(row: string[]): 'event' | 'task' | 'skip' {
   if (row.length < 2) return 'skip';
   
   const title = (row[0] || '').toLowerCase();
-  const remarks = (row[4] || '').toLowerCase();
+  const timeField = row[2] || ''; // Time is in column C (index 2)
   
   // Skip empty or header rows
   if (!title || title === 'name' || title === 'title') return 'skip';
   
-  // Events typically have specific time slots and are often meetings/classes
-  const isEvent = (
-    title.includes('lecture') ||
-    title.includes('class') ||
-    title.includes('meeting') ||
-    title.includes('presentation') ||
-    title.includes('exam') ||
-    title.includes('quiz') ||
-    remarks.includes('submission') ||
-    remarks.includes('lecture')
-  );
+  // Parse the time field to determine if it's a time range or single time
+  const timeData = parseSheetTime(timeField);
   
-  // Everything else is treated as a task
-  return isEvent ? 'event' : 'task';
+  // If both start and end times are present, it's an event
+  // If only start time is present, it's a task
+  if (timeData.startTime && timeData.endTime) {
+    return 'event';
+  } else if (timeData.startTime) {
+    return 'task';
+  }
+  
+  // If no valid time data, skip the row
+  return 'skip';
 }
 
 serve(async (req) => {
