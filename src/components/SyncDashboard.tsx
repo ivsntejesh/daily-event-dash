@@ -107,9 +107,10 @@ export const SyncDashboard = () => {
           if (log && log.status !== 'pending') {
             console.log('Sync finished with status:', log.status);
             if (log.status === 'success') {
+              const unchanged = (log.items_processed || 0) - (log.items_created || 0) - (log.items_updated || 0);
               toast({
                 title: 'Sync complete',
-                description: `Processed ${log.items_processed || 0}. Created ${log.items_created || 0}, Updated ${log.items_updated || 0}.`
+                description: `Sync Complete: ${log.items_created || 0} new records added, ${log.items_updated || 0} records updated, ${unchanged} unchanged.`
               });
               // Refresh logs and data smoothly without page reload
               await fetchSyncLogs();

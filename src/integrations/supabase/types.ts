@@ -76,6 +76,7 @@ export type Database = {
           sheet_id: string | null
           sheet_row_index: number | null
           start_time: string
+          sync_key: string | null
           title: string
           updated_at: string
           user_id: string | null
@@ -93,6 +94,7 @@ export type Database = {
           sheet_id?: string | null
           sheet_row_index?: number | null
           start_time: string
+          sync_key?: string | null
           title: string
           updated_at?: string
           user_id?: string | null
@@ -110,6 +112,7 @@ export type Database = {
           sheet_id?: string | null
           sheet_row_index?: number | null
           start_time?: string
+          sync_key?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
@@ -129,6 +132,7 @@ export type Database = {
           sheet_id: string | null
           sheet_row_index: number | null
           start_time: string | null
+          sync_key: string | null
           title: string
           updated_at: string
           user_id: string | null
@@ -145,6 +149,7 @@ export type Database = {
           sheet_id?: string | null
           sheet_row_index?: number | null
           start_time?: string | null
+          sync_key?: string | null
           title: string
           updated_at?: string
           user_id?: string | null
@@ -161,6 +166,7 @@ export type Database = {
           sheet_id?: string | null
           sheet_row_index?: number | null
           start_time?: string | null
+          sync_key?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
@@ -307,6 +313,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_sync_key: {
+        Args: {
+          p_date: string
+          p_end_time?: string
+          p_start_time?: string
+          p_title: string
+        }
+        Returns: string
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]

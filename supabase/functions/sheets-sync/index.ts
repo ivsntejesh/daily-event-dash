@@ -326,43 +326,52 @@ serve(async (req) => {
           const status = row[3] || ''; // Status in column D (index 3)
           const remarks = row[4] || ''; // Remarks in column E (index 4)
           
-          const baseData = {
-            title: row[0] || 'Untitled',
-            date: parsedDate,
-            sheet_id: spreadsheetId,
-            sheet_row_index: i + 2,
-            user_id: null // Public items don't have a specific user
-          };
-
+          const title = row[0] || 'Untitled';
+          
           if (category === 'event') {
             // Process as event - use provided times or defaults
+            const startTime = timeData.startTime || '09:00:00';
+            const endTime = timeData.endTime || (timeData.startTime ? 
+              (timeData.startTime.split(':')[0] === '23' ? '23:59:00' : 
+               `${(parseInt(timeData.startTime.split(':')[0]) + 1).toString().padStart(2, '0')}:${timeData.startTime.split(':')[1]}:00`) 
+              : '10:00:00');
+            
             const eventData = {
-              ...baseData,
+              title,
+              date: parsedDate,
               description: remarks || null,
-              start_time: timeData.startTime || '09:00:00',
-              end_time: timeData.endTime || (timeData.startTime ? 
-                (timeData.startTime.split(':')[0] === '23' ? '23:59:00' : 
-                 `${(parseInt(timeData.startTime.split(':')[0]) + 1).toString().padStart(2, '0')}:${timeData.startTime.split(':')[1]}:00`) 
-                : '10:00:00'),
+              start_time: startTime,
+              end_time: endTime,
               is_online: remarks.toLowerCase().includes('online') || remarks.toLowerCase().includes('zoom'),
               location: remarks.toLowerCase().includes('online') ? null : 'Campus',
               meeting_link: null,
-              notes: status ? `Status: ${status}` : null
+              notes: status ? `Status: ${status}` : null,
+              sheet_id: spreadsheetId,
+              sheet_row_index: i + 2,
+              user_id: null,
+              sync_key: `${title.toLowerCase().trim()}|${parsedDate}|${startTime}|${endTime}`
             };
 
             eventsToUpsert.push(eventData);
             eventsProcessed++;
           } else {
             // Process as task - only use start time, no end time for tasks
+            const startTime = timeData.startTime;
+            
             const taskData = {
-              ...baseData,
+              title,
+              date: parsedDate,
               description: remarks || null,
-              start_time: timeData.startTime,
+              start_time: startTime,
               end_time: null, // Tasks don't have end times
               is_completed: status.toLowerCase().includes('complete') || status.toLowerCase() === 'done',
               priority: remarks.toLowerCase().includes('urgent') ? 'high' : 
                        remarks.toLowerCase().includes('important') ? 'high' : 'medium',
-              notes: status ? `Status: ${status}` : null
+              notes: status ? `Status: ${status}` : null,
+              sheet_id: spreadsheetId,
+              sheet_row_index: i + 2,
+              user_id: null,
+              sync_key: `${title.toLowerCase().trim()}|${parsedDate}|${startTime || ''}|`
             };
 
             tasksToUpsert.push(taskData);
@@ -372,93 +381,109 @@ serve(async (req) => {
           totalItemsProcessed++;
         }
 
-        // Bulk upsert events in batches
+        // Process events with accurate tracking using sync_key
         if (eventsToUpsert.length > 0) {
           console.log(`Upserting ${eventsToUpsert.length} events in batches...`);
           const eventBatchSize = 100;
           for (let i = 0; i < eventsToUpsert.length; i += eventBatchSize) {
             const batch = eventsToUpsert.slice(i, i + eventBatchSize);
-            const { data: upsertedEvents, error: eventUpsertError } = await supabase
-              .from('public_events')
-              .upsert(batch, {
-                onConflict: 'sheet_id,sheet_row_index',
-                ignoreDuplicates: false
-              })
-              .select('id');
+            
+            // Process each event individually for accurate tracking
+            for (const eventData of batch) {
+              try {
+                // Check if record exists
+                const { data: existing } = await supabase
+                  .from('public_events')
+                  .select('id, title, description, start_time, end_time, is_online, location, notes')
+                  .eq('sync_key', eventData.sync_key)
+                  .maybeSingle();
 
-            if (eventUpsertError) {
-              console.error(`Error upserting events batch ${i / eventBatchSize + 1}:`, eventUpsertError);
-              // Try individual inserts/updates as fallback
-              for (const eventData of batch) {
-                try {
-                  const { data: existing } = await supabase
-                    .from('public_events')
-                    .select('id')
-                    .eq('sheet_id', eventData.sheet_id)
-                    .eq('sheet_row_index', eventData.sheet_row_index)
-                    .maybeSingle();
+                if (existing) {
+                  // Check if data has actually changed
+                  const hasChanged = 
+                    existing.title !== eventData.title ||
+                    existing.description !== eventData.description ||
+                    existing.start_time !== eventData.start_time ||
+                    existing.end_time !== eventData.end_time ||
+                    existing.is_online !== eventData.is_online ||
+                    existing.location !== eventData.location ||
+                    existing.notes !== eventData.notes;
 
-                  if (existing) {
-                    await supabase.from('public_events').update(eventData).eq('id', existing.id);
+                  if (hasChanged) {
+                    await supabase
+                      .from('public_events')
+                      .update({ 
+                        ...eventData, 
+                        updated_at: new Date().toISOString() 
+                      })
+                      .eq('id', existing.id);
                     totalItemsUpdated++;
-                  } else {
-                    await supabase.from('public_events').insert(eventData);
-                    totalItemsCreated++;
                   }
-                } catch (fallbackError) {
-                  console.error('Fallback event operation failed:', fallbackError);
+                  // If no changes, don't increment any counter (unchanged)
+                } else {
+                  // New record
+                  await supabase.from('public_events').insert(eventData);
+                  totalItemsCreated++;
                 }
+              } catch (error) {
+                console.error('Event processing error:', error);
               }
-            } else {
-              // Count as updates since upsert was used
-              totalItemsUpdated += batch.length;
-              console.log(`Successfully upserted events batch ${i / eventBatchSize + 1}`);
             }
+            
+            console.log(`Successfully processed events batch ${Math.floor(i / eventBatchSize) + 1}`);
           }
         }
 
-        // Bulk upsert tasks in batches
+        // Process tasks with accurate tracking using sync_key
         if (tasksToUpsert.length > 0) {
           console.log(`Upserting ${tasksToUpsert.length} tasks in batches...`);
           const taskBatchSize = 100;
           for (let i = 0; i < tasksToUpsert.length; i += taskBatchSize) {
             const batch = tasksToUpsert.slice(i, i + taskBatchSize);
-            const { data: upsertedTasks, error: taskUpsertError } = await supabase
-              .from('public_tasks')
-              .upsert(batch, {
-                onConflict: 'sheet_id,sheet_row_index',
-                ignoreDuplicates: false
-              })
-              .select('id');
+            
+            // Process each task individually for accurate tracking
+            for (const taskData of batch) {
+              try {
+                // Check if record exists
+                const { data: existing } = await supabase
+                  .from('public_tasks')
+                  .select('id, title, description, start_time, end_time, is_completed, priority, notes')
+                  .eq('sync_key', taskData.sync_key)
+                  .maybeSingle();
 
-            if (taskUpsertError) {
-              console.error(`Error upserting tasks batch ${i / taskBatchSize + 1}:`, taskUpsertError);
-              // Try individual inserts/updates as fallback
-              for (const taskData of batch) {
-                try {
-                  const { data: existing } = await supabase
-                    .from('public_tasks')
-                    .select('id')
-                    .eq('sheet_id', taskData.sheet_id)
-                    .eq('sheet_row_index', taskData.sheet_row_index)
-                    .maybeSingle();
+                if (existing) {
+                  // Check if data has actually changed
+                  const hasChanged = 
+                    existing.title !== taskData.title ||
+                    existing.description !== taskData.description ||
+                    existing.start_time !== taskData.start_time ||
+                    existing.end_time !== taskData.end_time ||
+                    existing.is_completed !== taskData.is_completed ||
+                    existing.priority !== taskData.priority ||
+                    existing.notes !== taskData.notes;
 
-                  if (existing) {
-                    await supabase.from('public_tasks').update(taskData).eq('id', existing.id);
+                  if (hasChanged) {
+                    await supabase
+                      .from('public_tasks')
+                      .update({ 
+                        ...taskData, 
+                        updated_at: new Date().toISOString() 
+                      })
+                      .eq('id', existing.id);
                     totalItemsUpdated++;
-                  } else {
-                    await supabase.from('public_tasks').insert(taskData);
-                    totalItemsCreated++;
                   }
-                } catch (fallbackError) {
-                  console.error('Fallback task operation failed:', fallbackError);
+                  // If no changes, don't increment any counter (unchanged)
+                } else {
+                  // New record
+                  await supabase.from('public_tasks').insert(taskData);
+                  totalItemsCreated++;
                 }
+              } catch (error) {
+                console.error('Task processing error:', error);
               }
-            } else {
-              // Count as updates since upsert was used
-              totalItemsUpdated += batch.length;
-              console.log(`Successfully upserted tasks batch ${i / taskBatchSize + 1}`);
             }
+            
+            console.log(`Successfully processed tasks batch ${Math.floor(i / taskBatchSize) + 1}`);
           }
         }
       }
@@ -481,8 +506,10 @@ serve(async (req) => {
         })
         .eq('id', syncLog.id);
 
+      const totalUnchanged = totalItemsProcessed - totalItemsCreated - totalItemsUpdated;
+      
       console.log('Sync completed successfully');
-      console.log(`Total processed: ${totalItemsProcessed}, Created: ${totalItemsCreated}, Updated: ${totalItemsUpdated}`);
+      console.log(`Total processed: ${totalItemsProcessed}, Created: ${totalItemsCreated}, Updated: ${totalItemsUpdated}, Unchanged: ${totalUnchanged}`);
       console.log(`Events: ${eventsProcessed}, Tasks: ${tasksProcessed}`);
 
       return new Response(
@@ -491,9 +518,11 @@ serve(async (req) => {
           items_processed: totalItemsProcessed,
           items_created: totalItemsCreated,
           items_updated: totalItemsUpdated,
+          items_unchanged: totalUnchanged,
           events_processed: eventsProcessed,
           tasks_processed: tasksProcessed,
-          sync_log_id: syncLog.id
+          sync_log_id: syncLog.id,
+          message: `Sync Complete: ${totalItemsCreated} new records added, ${totalItemsUpdated} records updated, ${totalUnchanged} unchanged.`
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
