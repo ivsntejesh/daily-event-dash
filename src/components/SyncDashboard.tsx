@@ -97,7 +97,7 @@ export const SyncDashboard = () => {
         while (attempts < maxAttempts) {
           const { data: log, error } = await supabase
             .from('sync_log')
-            .select('status, items_processed, items_created, items_updated')
+            .select('status, items_processed, items_created, items_updated, metadata')
             .eq('id', logId)
             .single();
           if (error) {
@@ -107,10 +107,11 @@ export const SyncDashboard = () => {
           if (log && log.status !== 'pending') {
             console.log('Sync finished with status:', log.status);
             if (log.status === 'success') {
+              const deleted = (log.metadata as any)?.items_deleted || 0;
               const unchanged = (log.items_processed || 0) - (log.items_created || 0) - (log.items_updated || 0);
               toast({
                 title: 'Sync complete',
-                description: `Sync Complete: ${log.items_created || 0} new records added, ${log.items_updated || 0} records updated, ${unchanged} unchanged.`
+                description: `Sync Complete: ${log.items_created || 0} new records added, ${log.items_updated || 0} records updated, ${deleted} records deleted, ${unchanged} unchanged.`
               });
               // Refresh logs and data smoothly without page reload
               await fetchSyncLogs();
@@ -367,6 +368,9 @@ export const SyncDashboard = () => {
                         <div>Processed: {log.items_processed || 0}</div>
                         <div>Created: {log.items_created || 0}</div>
                         <div>Updated: {log.items_updated || 0}</div>
+                        {log.metadata && typeof log.metadata === 'object' && 'items_deleted' in log.metadata && (
+                          <div>Deleted: {(log.metadata as any).items_deleted || 0}</div>
+                        )}
                         {log.metadata && typeof log.metadata === 'object' && 'events_processed' in log.metadata && (
                           <>
                             <div>Events: {(log.metadata as any).events_processed || 0}</div>

@@ -261,6 +261,7 @@ serve(async (req) => {
     let totalItemsProcessed = 0;
     let totalItemsCreated = 0;
     let totalItemsUpdated = 0;
+    let totalItemsDeleted = 0;
     let eventsProcessed = 0;
     let tasksProcessed = 0;
 
@@ -304,6 +305,7 @@ serve(async (req) => {
         // Prepare arrays for bulk operations
         const eventsToUpsert: any[] = [];
         const tasksToUpsert: any[] = [];
+        const sheetSyncKeys: string[] = []; // Track all sync keys from current sheet
 
         for (let i = 0; i < dataRows.length; i++) {
           const row = dataRows[i];
@@ -353,6 +355,7 @@ serve(async (req) => {
             };
 
             eventsToUpsert.push(eventData);
+            sheetSyncKeys.push(eventData.sync_key);
             eventsProcessed++;
           } else {
             // Process as task - only use start time, no end time for tasks
@@ -375,6 +378,7 @@ serve(async (req) => {
             };
 
             tasksToUpsert.push(taskData);
+            sheetSyncKeys.push(taskData.sync_key);
             tasksProcessed++;
           }
 
@@ -486,6 +490,42 @@ serve(async (req) => {
             console.log(`Successfully processed tasks batch ${Math.floor(i / taskBatchSize) + 1}`);
           }
         }
+
+        // Handle deletions - remove records that exist in DB but not in current sheet
+        
+        if (sheetSyncKeys.length > 0) {
+          console.log('Checking for records to delete that are no longer in sheet...');
+          
+          // Delete events that exist in DB but not in current sheet
+          const { data: deletedEvents, error: deleteEventsError } = await supabase
+            .from('public_events')
+            .delete()
+            .eq('sheet_id', spreadsheetId)
+            .not('sync_key', 'in', `(${sheetSyncKeys.map(key => `"${key}"`).join(',')})`)
+            .select('id');
+
+          if (deleteEventsError) {
+            console.error('Error deleting events:', deleteEventsError);
+          } else if (deletedEvents) {
+            totalItemsDeleted += deletedEvents.length;
+            console.log(`Deleted ${deletedEvents.length} events that are no longer in sheet`);
+          }
+
+          // Delete tasks that exist in DB but not in current sheet
+          const { data: deletedTasks, error: deleteTasksError } = await supabase
+            .from('public_tasks')
+            .delete()
+            .eq('sheet_id', spreadsheetId)
+            .not('sync_key', 'in', `(${sheetSyncKeys.map(key => `"${key}"`).join(',')})`)
+            .select('id');
+
+          if (deleteTasksError) {
+            console.error('Error deleting tasks:', deleteTasksError);
+          } else if (deletedTasks) {
+            totalItemsDeleted += deletedTasks.length;
+            console.log(`Deleted ${deletedTasks.length} tasks that are no longer in sheet`);
+          }
+        }
       }
 
       // Update sync log as completed
@@ -501,6 +541,7 @@ serve(async (req) => {
             spreadsheet_id: spreadsheetId, 
             events_processed: eventsProcessed,
             tasks_processed: tasksProcessed,
+            items_deleted: totalItemsDeleted,
             range_used: maxRange
           }
         })
@@ -509,7 +550,7 @@ serve(async (req) => {
       const totalUnchanged = totalItemsProcessed - totalItemsCreated - totalItemsUpdated;
       
       console.log('Sync completed successfully');
-      console.log(`Total processed: ${totalItemsProcessed}, Created: ${totalItemsCreated}, Updated: ${totalItemsUpdated}, Unchanged: ${totalUnchanged}`);
+      console.log(`Total processed: ${totalItemsProcessed}, Created: ${totalItemsCreated}, Updated: ${totalItemsUpdated}, Deleted: ${totalItemsDeleted}, Unchanged: ${totalUnchanged}`);
       console.log(`Events: ${eventsProcessed}, Tasks: ${tasksProcessed}`);
 
       return new Response(
@@ -518,11 +559,12 @@ serve(async (req) => {
           items_processed: totalItemsProcessed,
           items_created: totalItemsCreated,
           items_updated: totalItemsUpdated,
+          items_deleted: totalItemsDeleted,
           items_unchanged: totalUnchanged,
           events_processed: eventsProcessed,
           tasks_processed: tasksProcessed,
           sync_log_id: syncLog.id,
-          message: `Sync Complete: ${totalItemsCreated} new records added, ${totalItemsUpdated} records updated, ${totalUnchanged} unchanged.`
+          message: `Sync Complete: ${totalItemsCreated} new records added, ${totalItemsUpdated} records updated, ${totalItemsDeleted} records deleted, ${totalUnchanged} unchanged.`
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -542,7 +584,11 @@ serve(async (req) => {
           error_message: (syncError as Error).message,
           items_processed: totalItemsProcessed,
           items_created: totalItemsCreated,
-          items_updated: totalItemsUpdated
+          items_updated: totalItemsUpdated,
+          metadata: { 
+            spreadsheet_id: spreadsheetId,
+            items_deleted: totalItemsDeleted
+          }
         })
         .eq('id', syncLog.id);
 
