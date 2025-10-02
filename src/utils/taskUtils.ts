@@ -58,27 +58,27 @@ export const getPriorityColor = (priority: string) => {
   switch (priority.toLowerCase()) {
     case 'high':
       return {
-        bg: 'bg-red-100',
-        text: 'text-red-700',
-        border: 'border-red-300'
+        bg: 'bg-priority-high/10',
+        text: 'text-priority-high',
+        border: 'border-priority-high/30'
       };
     case 'medium':
       return {
-        bg: 'bg-yellow-100',
-        text: 'text-yellow-700',
-        border: 'border-yellow-300'
+        bg: 'bg-priority-medium/10',
+        text: 'text-priority-medium',
+        border: 'border-priority-medium/30'
       };
     case 'low':
       return {
-        bg: 'bg-green-100',
-        text: 'text-green-700',
-        border: 'border-green-300'
+        bg: 'bg-priority-low/10',
+        text: 'text-priority-low',
+        border: 'border-priority-low/30'
       };
     default:
       return {
-        bg: 'bg-gray-100',
-        text: 'text-gray-700',
-        border: 'border-gray-300'
+        bg: 'bg-muted',
+        text: 'text-muted-foreground',
+        border: 'border-muted'
       };
   }
 };

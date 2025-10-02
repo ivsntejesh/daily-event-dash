@@ -29,7 +29,6 @@ export const usePublicTasks = () => {
           variant: "destructive",
         });
       } else {
-        console.log('Fetched public tasks:', data);
         setPublicTasks(data || []);
       }
     } catch (error) {
@@ -47,7 +46,6 @@ export const usePublicTasks = () => {
     if (!user) return;
 
     try {
-      console.log('Creating public task with user_id:', user.id);
       const { data, error } = await supabase
         .from('public_tasks')
         .insert([{ ...taskData, user_id: user.id }])
@@ -64,7 +62,6 @@ export const usePublicTasks = () => {
         return;
       }
 
-      console.log('Created public task:', data);
       setPublicTasks(prev => [...prev, data]);
       toast({
         title: "Success",

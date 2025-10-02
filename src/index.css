@@ -51,6 +51,14 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Task priority colors */
+    --priority-high: 0 84.2% 60.2%;
+    --priority-high-foreground: 0 85.7% 97.3%;
+    --priority-medium: 48 96.5% 53.1%;
+    --priority-medium-foreground: 26 83.3% 14.1%;
+    --priority-low: 142.1 76.2% 36.3%;
+    --priority-low-foreground: 138.5 76.5% 96.7%;
   }
 
   .dark {
@@ -89,6 +97,14 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Task priority colors - dark mode */
+    --priority-high: 0 62.8% 30.6%;
+    --priority-high-foreground: 0 85.7% 97.3%;
+    --priority-medium: 48 96.5% 53.1%;
+    --priority-medium-foreground: 26 83.3% 14.1%;
+    --priority-low: 142.1 70.6% 45.3%;
+    --priority-low-foreground: 138.5 76.5% 96.7%;
   }
 }
 

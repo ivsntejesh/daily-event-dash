@@ -29,7 +29,6 @@ export const usePublicEvents = () => {
           variant: "destructive",
         });
       } else {
-        console.log('Fetched public events:', data);
         setPublicEvents(data || []);
       }
     } catch (error) {
@@ -47,7 +46,6 @@ export const usePublicEvents = () => {
     if (!user) return;
 
     try {
-      console.log('Creating public event with user_id:', user.id);
       const { data, error } = await supabase
         .from('public_events')
         .insert([{ ...eventData, user_id: user.id }])
@@ -64,7 +62,6 @@ export const usePublicEvents = () => {
         return;
       }
 
-      console.log('Created public event:', data);
       setPublicEvents(prev => [...prev, data]);
       toast({
         title: "Success",
