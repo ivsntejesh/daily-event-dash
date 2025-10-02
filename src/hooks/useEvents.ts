@@ -11,7 +11,8 @@ export const useEvents = () => {
     addEvent: addPrivateEvent,
     updateEvent: updatePrivateEvent,
     deleteEvent: deletePrivateEvent,
-    loading: privateLoading 
+    loading: privateLoading,
+    refetch: refetchPrivateEvents
   } = useSupabaseEvents();
   
   const { 
@@ -19,7 +20,8 @@ export const useEvents = () => {
     addPublicEvent,
     updatePublicEvent,
     deletePublicEvent,
-    loading: publicLoading 
+    loading: publicLoading,
+    refetch: refetchPublicEvents
   } = usePublicEvents();
 
   const { isAdmin } = useUserRole();
@@ -78,6 +80,13 @@ export const useEvents = () => {
     }
   };
 
+  const refetchAll = async () => {
+    await Promise.all([
+      refetchPrivateEvents(),
+      refetchPublicEvents()
+    ]);
+  };
+
   return {
     events: allEvents,
     loading: privateLoading || publicLoading,
@@ -85,5 +94,6 @@ export const useEvents = () => {
     updateEvent: handleUpdateEvent,
     deleteEvent: handleDeleteEvent,
     isAdmin,
+    refetch: refetchAll,
   };
 };

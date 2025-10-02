@@ -8,7 +8,8 @@ export const useRefreshData = () => {
     saveEvent, 
     updateEvent, 
     deleteEvent,
-    isAdmin 
+    isAdmin,
+    refetch: refetchEvents
   } = useEvents();
   
   const { 
@@ -17,12 +18,16 @@ export const useRefreshData = () => {
     saveTask, 
     updateTask, 
     deleteTask, 
-    toggleTaskCompletion 
+    toggleTaskCompletion,
+    refetch: refetchTasks
   } = useTasks();
 
-  const refreshAll = () => {
-    // Force a complete refresh of all data
-    window.location.reload();
+  const refreshAll = async () => {
+    // Refresh all data using React state management instead of page reload
+    await Promise.all([
+      refetchEvents(),
+      refetchTasks()
+    ]);
   };
 
   return {

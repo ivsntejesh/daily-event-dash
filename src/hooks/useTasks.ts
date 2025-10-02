@@ -12,7 +12,8 @@ export const useTasks = () => {
     loading: privateLoading,
     updateTask: updatePrivateTask,
     deleteTask: deletePrivateTask,
-    toggleTaskCompletion: togglePrivateTaskCompletion
+    toggleTaskCompletion: togglePrivateTaskCompletion,
+    refetch: refetchPrivateTasks
   } = useSupabaseTasks();
   
   const { 
@@ -21,7 +22,8 @@ export const useTasks = () => {
     updatePublicTask,
     deletePublicTask,
     togglePublicTaskCompletion,
-    loading: publicLoading 
+    loading: publicLoading,
+    refetch: refetchPublicTasks
   } = usePublicTasks();
 
   const { isAdmin } = useUserRole();
@@ -88,6 +90,13 @@ export const useTasks = () => {
     }
   };
 
+  const refetchAll = async () => {
+    await Promise.all([
+      refetchPrivateTasks(),
+      refetchPublicTasks()
+    ]);
+  };
+
   return {
     tasks: allTasks,
     loading: privateLoading || publicLoading,
@@ -96,5 +105,6 @@ export const useTasks = () => {
     deleteTask: handleDeleteTask,
     toggleTaskCompletion: handleToggleTaskCompletion,
     isAdmin,
+    refetch: refetchAll,
   };
 };
