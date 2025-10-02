@@ -82,8 +82,13 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
   };
 
   return (
-    <Card className={`mb-3 ${active ? 'border-blue-500 bg-blue-50' : ''} ${isPublic ? 'border-purple-200 bg-purple-50' : ''} ${task.isCompleted ? 'opacity-60' : ''}`}>
-      <CardContent className="p-4">
+    <Card className={`hover-lift transition-all duration-300 border-l-4 ${
+      task.isCompleted ? 'opacity-60 border-l-muted' :
+      active ? 'border-l-info bg-info/5 shadow-md' : 
+      isPublic ? 'border-l-purple-400 bg-purple-50/50' : 
+      'border-l-primary/30 bg-card'
+    }`}>
+      <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1">
             {showActions && (
@@ -94,20 +99,20 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
               />
             )}
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <div className="flex items-center gap-1 text-orange-600">
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <div className="flex items-center gap-1.5 text-warning">
                   <Calendar className="h-4 w-4" />
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-semibold">
                     {formatDeadline(task.date, task.startTime, task.endTime)}
                   </span>
                 </div>
                 {active && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    Active
+                  <Badge className="bg-info/10 text-info border-info/20 font-medium animate-pulse">
+                    ● Active
                   </Badge>
                 )}
                 {isPublic && (
-                  <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">
+                  <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300 font-medium">
                     <Globe className="h-3 w-3 mr-1" />
                     Public
                   </Badge>
@@ -126,7 +131,7 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, showActions
                   {task.priority || 'medium'}
                 </Badge>
               </div>
-              <h3 className={`font-semibold mb-1 ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+              <h3 className={`font-display font-semibold text-lg mb-2 ${task.isCompleted ? 'line-through text-muted-foreground' : ''}`}>
                 {task.title}
               </h3>
               {task.description && (

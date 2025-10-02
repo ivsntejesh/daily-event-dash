@@ -58,42 +58,40 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false, showDa
     (isPublic && isAdmin()) // Admins can edit any public event
   );
 
-  console.log('EventCard debug:', {
-    eventId: event.id,
-    eventTitle: event.title,
-    isPublic,
-    eventUserId: event.userId,
-    currentUserId: user?.id,
-    isAdmin: isAdmin(),
-    canEdit,
-    showActions
-  });
-
   return (
-    <Card className={`mb-3 ${ongoing ? 'border-green-500 bg-green-50' : ''} ${isPublic ? 'border-blue-200 bg-blue-50' : ''}`}>
-      <CardContent className="p-4">
+    <Card className={`hover-lift transition-all duration-300 border-l-4 ${
+      ongoing ? 'border-l-success bg-success/5 shadow-md' : 
+      isPublic ? 'border-l-info bg-info/5' : 
+      'border-l-primary/30 bg-card'
+    }`}>
+      <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <div className="flex items-center gap-3 mb-3 flex-wrap">
               {showDate && (
                 <>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-primary">
-                    {formatEventDate(event.date)} •
-                  </span>
+                  <div className="flex items-center gap-1.5 text-primary">
+                    <Calendar className="h-4 w-4" />
+                    <span className="text-sm font-semibold">
+                      {formatEventDate(event.date)}
+                    </span>
+                  </div>
+                  <span className="text-muted-foreground">•</span>
                 </>
               )}
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">
-                {event.startTime} - {event.endTime}
-              </span>
+              <div className="flex items-center gap-1.5 text-foreground">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {event.startTime} - {event.endTime}
+                </span>
+              </div>
               {ongoing && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Ongoing
+                <Badge className="bg-success/10 text-success border-success/20 font-medium animate-pulse">
+                  ● Ongoing
                 </Badge>
               )}
               {isPublic && (
-                <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                <Badge variant="outline" className="bg-info/10 text-info border-info/30 font-medium">
                   <Globe className="h-3 w-3 mr-1" />
                   Public
                 </Badge>
@@ -105,7 +103,7 @@ export const EventCard = ({ event, onEdit, onDelete, showActions = false, showDa
                 </Badge>
               )}
             </div>
-            <h3 className="font-semibold mb-1">{event.title}</h3>
+            <h3 className="font-display font-semibold text-lg mb-2">{event.title}</h3>
             {event.description && (
               <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
             )}

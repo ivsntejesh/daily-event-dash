@@ -25,11 +25,11 @@ export const Navigation = () => {
   }
 
   return (
-    <header className="bg-background border-b sticky top-0 z-50">
+    <header className="bg-card/80 backdrop-blur-lg border-b sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link to="/" className="text-xl font-bold">
-            Dashboard
+          <Link to="/" className="text-xl font-display font-bold text-gradient hover:opacity-80 transition-opacity">
+            Daily Event Dash
           </Link>
 
           {/* Desktop Navigation */}
@@ -38,10 +38,10 @@ export const Navigation = () => {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive(item.to)
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 }`}
               >
                 <item.icon className="h-4 w-4 mr-2" />
@@ -64,10 +64,10 @@ export const Navigation = () => {
                     key={item.to}
                     to={item.to}
                     onClick={() => setIsOpen(false)}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive(item.to)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                     }`}
                   >
                     <item.icon className="h-4 w-4 mr-2" />

@@ -7,18 +7,18 @@ export const AccountPage = () => {
   const { user, signOut } = useAuth();
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <Card>
+    <div className="max-w-2xl mx-auto p-4 md:p-6 animate-fade-in">
+      <Card className="card-gradient shadow-lg">
         <CardHeader>
-          <CardTitle>Account Settings</CardTitle>
+          <CardTitle className="text-2xl font-display">Account Settings</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <label className="text-sm font-medium">Email:</label>
-              <p className="text-gray-600">{user?.email}</p>
+              <label className="text-sm font-medium text-muted-foreground">Email:</label>
+              <p className="text-lg font-medium mt-1">{user?.email}</p>
             </div>
-            <Button onClick={signOut} variant="outline">
+            <Button onClick={signOut} variant="outline" className="hover-lift">
               Sign Out
             </Button>
           </div>

@@ -118,22 +118,25 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* View switcher for logged-in users */}
       {user && (
-        <div className="flex justify-center gap-2 p-4 border-b">
+        <div className="flex justify-center gap-3 p-4 bg-card/50 backdrop-blur-sm border-b">
           <Button
             variant={currentView === 'dashboard' ? 'default' : 'outline'}
             onClick={() => setCurrentView('dashboard')}
+            className="transition-all duration-200"
           >
             Dashboard
           </Button>
           <Button
             variant={currentView === 'calendar' ? 'default' : 'outline'}
             onClick={() => setCurrentView('calendar')}
+            className="transition-all duration-200"
           >
             Calendar
           </Button>
           <Button
             variant={currentView === 'tasks' ? 'default' : 'outline'}
             onClick={() => setCurrentView('tasks')}
+            className="transition-all duration-200"
           >
             Tasks
           </Button>

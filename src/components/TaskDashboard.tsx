@@ -95,23 +95,29 @@ export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplet
   };
 
   const TaskSection = ({ title, tasks, icon }: { title: string; tasks: FormattedTask[]; icon: React.ReactNode }) => (
-    <div>
-      <div className="flex items-center gap-2 mb-4">
-        {icon}
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <span className="text-sm text-muted-foreground">({tasks.length})</span>
+    <div className="animate-slide-up">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="p-2 bg-primary/10 rounded-lg">
+          {icon}
+        </div>
+        <h2 className="text-xl font-display font-semibold">{title}</h2>
+        <span className="px-2.5 py-0.5 bg-muted rounded-full text-sm font-medium text-muted-foreground">
+          {tasks.length}
+        </span>
       </div>
       {tasks.length > 0 ? (
-        tasks.map(task => (
-          <TaskCard 
-            key={task.id} 
-            task={task} 
-            onEdit={onEditTask}
-            onDelete={(taskId) => handleDeleteTask(taskId, task.title)}
-            onToggleComplete={onToggleComplete}
-            showActions={true}
-          />
-        ))
+        <div className="space-y-3">
+          {tasks.map(task => (
+            <TaskCard 
+              key={task.id} 
+              task={task} 
+              onEdit={onEditTask}
+              onDelete={(taskId) => handleDeleteTask(taskId, task.title)}
+              onToggleComplete={onToggleComplete}
+              showActions={true}
+            />
+          ))}
+        </div>
       ) : (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
@@ -123,17 +129,17 @@ export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplet
   );
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
-      <div className="text-center mb-6">
+    <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6 animate-fade-in">
+      <div className="text-center mb-8">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">Task Dashboard</h1>
-            <p className="text-muted-foreground">
+          <div className="flex-1">
+            <h1 className="text-3xl md:text-4xl font-display font-bold mb-3 text-gradient">Task Dashboard</h1>
+            <p className="text-base text-muted-foreground">
               {format(now, 'EEEE, MMMM d, yyyy')}
             </p>
           </div>
           {onNewTask && (
-            <Button onClick={onNewTask} className="flex items-center gap-2">
+            <Button onClick={onNewTask} className="flex items-center gap-2 shadow-md hover-lift">
               <Plus className="h-4 w-4" />
               New Task
             </Button>
@@ -180,7 +186,7 @@ export const TaskDashboard = ({ tasks, onEditTask, onDeleteTask, onToggleComplet
           <Button
             variant={showArchive ? "default" : "outline"}
             onClick={() => setShowArchive(!showArchive)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 transition-all duration-200"
           >
             <Archive className="h-4 w-4" />
             {showArchive ? 'Hide Archive' : 'Show Archive'}
